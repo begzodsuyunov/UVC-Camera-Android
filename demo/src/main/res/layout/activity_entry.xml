@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.herohan.uvcdemo.EntryActivity">
+
+    <FrameLayout
+        android:id="@+id/flFragment"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@+id/bottomNavigationView"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottomNavigationView"
+        android:layout_width="match_parent"
+        android:layout_height="75dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:menu="@menu/bottom_nav" />
+    <!--    <Button-->
+    <!--        android:id="@+id/btnBasicPreview"-->
+    <!--        style="@style/EntryButton"-->
+    <!--        android:text="@string/entry_basic_preview" />-->
+
+    <!--    <Button-->
+    <!--        android:id="@+id/btnCustomPreview"-->
+    <!--        style="@style/EntryButton"-->
+    <!--        android:text="@string/entry_custom_preview" />-->
+
+    <!--&lt;!&ndash;    <Button&ndash;&gt;-->
+    <!--&lt;!&ndash;        android:id="@+id/btnMultiPreview"&ndash;&gt;-->
+    <!--&lt;!&ndash;        style="@style/EntryButton"&ndash;&gt;-->
+    <!--&lt;!&ndash;        android:text="@string/entry_multi_preview" />&ndash;&gt;-->
+
+    <!--    <Button-->
+    <!--        android:id="@+id/btnMultiCameraNew"-->
+    <!--        style="@style/EntryButton"-->
+    <!--        android:text="@string/entry_multi_camera_new" />-->
+
+    <!--&lt;!&ndash;    <Button&ndash;&gt;-->
+    <!--&lt;!&ndash;        android:id="@+id/btnMultiCamera"&ndash;&gt;-->
+    <!--&lt;!&ndash;        style="@style/EntryButton"&ndash;&gt;-->
+    <!--&lt;!&ndash;        android:text="@string/entry_multi_camera" />&ndash;&gt;-->
+
+    <!--    <Button-->
+    <!--        android:id="@+id/btnTakePicture"-->
+    <!--        style="@style/EntryButton"-->
+    <!--        android:text="@string/entry_take_picture" />-->
+
+    <!--    <Button-->
+    <!--        android:id="@+id/btnRecordVideo"-->
+    <!--        style="@style/EntryButton"-->
+    <!--        android:text="@string/entry_record_video" />-->
+
+    <!--&lt;!&ndash;    <Button&ndash;&gt;-->
+    <!--&lt;!&ndash;        android:id="@+id/btnSetFrameCallback"&ndash;&gt;-->
+    <!--&lt;!&ndash;        style="@style/EntryButton"&ndash;&gt;-->
+    <!--&lt;!&ndash;        android:text="@string/entry_set_frame_callback" />&ndash;&gt;-->
+</androidx.constraintlayout.widget.ConstraintLayout>
