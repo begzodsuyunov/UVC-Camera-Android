@@ -2,12 +2,9 @@ package com.herohan.uvcdemo.fragment.pagefragments;
 
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.Fragment;
-
+import android.os.ConditionVariable;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -18,6 +15,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
+
 import com.herohan.uvcapp.CameraHelper;
 import com.herohan.uvcapp.ICameraHelper;
 import com.herohan.uvcdemo.CustomPreviewActivity;
@@ -27,9 +29,11 @@ import com.herohan.uvcdemo.fragment.DeviceListDialogFragment;
 import com.herohan.uvcdemo.fragment.VideoFormatDialogFragment;
 import com.serenegiant.opengl.renderer.MirrorMode;
 import com.serenegiant.usb.Size;
+import com.serenegiant.usb.UVCCamera;
+import com.serenegiant.usb.UVCParam;
 import com.serenegiant.widget.AspectRatioSurfaceView;
 
-import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class CustomPreviewFragment extends Fragment implements View.OnClickListener {
     private static final boolean DEBUG = true;
@@ -58,7 +62,14 @@ public class CustomPreviewFragment extends Fragment implements View.OnClickListe
     private VideoFormatDialogFragment mVideoFormatDialog;
     private Button btnOpenCamera;
     private Button btnCloseCamera;
+    private Handler mAsyncHandler;
+    private final Object mSync = new Object();
+
+    private HandlerThread mHandlerThread;
+
     private boolean mIsCameraConnected = false;
+    private ConcurrentLinkedQueue<UsbDevice> mReadyUsbDeviceList = new ConcurrentLinkedQueue<>();
+    private ConditionVariable mReadyDeviceConditionVariable = new ConditionVariable();
 
     private DeviceListDialogFragment mDeviceListDialog;
 
@@ -95,6 +106,10 @@ public class CustomPreviewFragment extends Fragment implements View.OnClickListe
             activity.setTitle(R.string.entry_custom_preview);
         }
         initViews();
+
+        mHandlerThread = new HandlerThread(TAG);
+        mHandlerThread.start();
+        mAsyncHandler = new Handler(mHandlerThread.getLooper());
     }
 
     @Override
@@ -104,16 +119,24 @@ public class CustomPreviewFragment extends Fragment implements View.OnClickListe
     }
 
     @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        mHandlerThread.quitSafely();
+        mAsyncHandler.removeCallbacksAndMessages(null);
+    }
+
+    @Override
     public void onStart() {
         super.onStart();
         initCameraHelper();
     }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        clearCameraHelper();
-    }
+//
+//    @Override
+//    public void onStop() {
+//        super.onStop();
+//        clearCameraHelper();
+//    }
 
     private void initViews() {
         mCameraViewMain.setAspectRatio(mPreviewWidth, mPreviewHeight);
@@ -141,6 +164,11 @@ public class CustomPreviewFragment extends Fragment implements View.OnClickListe
 
         btnOpenCamera.setOnClickListener(this);
         btnCloseCamera.setOnClickListener(this);
+    }
+
+    private void removeSelectedDevice(UsbDevice device) {
+        mReadyUsbDeviceList.remove(device);
+        mReadyDeviceConditionVariable.open();
     }
 
     @Override
@@ -184,7 +212,7 @@ public class CustomPreviewFragment extends Fragment implements View.OnClickListe
             flipHorizontally();
         } else if (id == R.id.action_flip_vertically) {
             flipVertically();
-        } else if (id == R.id.action_device){
+        } else if (id == R.id.action_device) {
             showDeviceListDialog();
 
         }
@@ -202,14 +230,13 @@ public class CustomPreviewFragment extends Fragment implements View.OnClickListe
             mControlsDialog.show(getChildFragmentManager(), "controls_dialog");
         }
     }
+
     private void showDeviceListDialog() {
-        if (mDeviceListDialog != null && mDeviceListDialog.isAdded()) {
-            return;
-        }
+
 
         mDeviceListDialog = new DeviceListDialogFragment(mCameraHelper, mIsCameraConnected ? mUsbDevice : null);
         mDeviceListDialog.setOnDeviceItemSelectListener(usbDevice -> {
-            if (mIsCameraConnected) {
+            if (mCameraHelper != null && mIsCameraConnected) {
                 mCameraHelper.closeCamera();
             }
             mUsbDevice = usbDevice;
@@ -256,6 +283,7 @@ public class CustomPreviewFragment extends Fragment implements View.OnClickListe
             mCameraHelper.setStateCallback(mStateListener);
         }
     }
+
     private void closeAllDialogFragment() {
         if (mControlsDialog != null && mControlsDialog.isAdded()) {
             mControlsDialog.dismiss();
@@ -278,47 +306,74 @@ public class CustomPreviewFragment extends Fragment implements View.OnClickListe
 
     private void selectDevice(final UsbDevice device) {
         if (DEBUG) Log.v(TAG, "selectDevice:device=" + device.getDeviceName());
-        mCameraHelper.selectDevice(device);
+        if (mCameraHelper != null) {
+            mCameraHelper.selectDevice(device);
+        }
     }
 
     private final ICameraHelper.StateCallback mStateListener = new ICameraHelper.StateCallback() {
+        private final String LOG_PREFIX = "ListenerRight#";
+
         @Override
         public void onAttach(UsbDevice device) {
-            if (DEBUG) Log.v(TAG, "onAttach:");
-            selectDevice(device);
+            if (DEBUG) Log.v(TAG, LOG_PREFIX + "onAttach:");
+
+            synchronized (mSync) {
+                selectDevice(device);
+
+            }
+
         }
 
         @Override
         public void onDeviceOpen(UsbDevice device, boolean isFirstOpen) {
             if (DEBUG) Log.v(TAG, "onDeviceOpen:");
-            mCameraHelper.openCamera();
+            //mCameraHelper.openCamera();
+
+            if (mCameraHelper != null && device.equals(mUsbDevice)) {
+                UVCParam param = new UVCParam();
+                param.setQuirks(UVCCamera.UVC_QUIRK_FIX_BANDWIDTH);
+                mCameraHelper.openCamera(param);
+            }
+
+            removeSelectedDevice(device);
         }
 
         @Override
         public void onCameraOpen(UsbDevice device) {
             if (DEBUG) Log.v(TAG, "onCameraOpen:");
+            if (mCameraHelper != null && device.equals(mUsbDevice)) {
 
-            mCameraHelper.startPreview();
+                mCameraHelper.startPreview();
 
-            Size size = mCameraHelper.getPreviewSize();
-            if (size != null) {
-                resizePreviewView(size);
+                Size size = mCameraHelper.getPreviewSize();
+                if (size != null) {
+                    resizePreviewView(size);
+                }
+
+                mCameraHelper.addSurface(mCameraViewMain.getHolder().getSurface(), false);
+                mIsCameraConnected = true;
             }
-
-            mCameraHelper.addSurface(mCameraViewMain.getHolder().getSurface(), false);
             requireActivity().invalidateOptionsMenu();
+
+
         }
 
         @Override
         public void onCameraClose(UsbDevice device) {
             if (DEBUG) Log.v(TAG, "onCameraClose:");
 
-            if (mCameraHelper != null) {
-                mCameraHelper.removeSurface(mCameraViewMain.getHolder().getSurface());
+            if (device.equals(mUsbDevice)) {
+                if (mCameraHelper != null) {
+                    mCameraHelper.removeSurface(mCameraViewMain.getHolder().getSurface());
+                }
+
+                mIsCameraConnected = false;
+                requireActivity().invalidateOptionsMenu();
+                closeAllDialogFragment();
             }
 
-            requireActivity().invalidateOptionsMenu();
-            closeAllDialogFragment();
+
         }
 
         @Override
@@ -329,28 +384,34 @@ public class CustomPreviewFragment extends Fragment implements View.OnClickListe
         @Override
         public void onDetach(UsbDevice device) {
             if (DEBUG) Log.v(TAG, "onDetach:");
+            if (device.equals(mCameraHelper)) {
+                mUsbDevice = null;
+            }
+
+            removeSelectedDevice(device);
         }
 
         @Override
         public void onCancel(UsbDevice device) {
             if (DEBUG) Log.v(TAG, "onCancel:");
+            if (device.equals(mUsbDevice)) {
+                mUsbDevice = null;
+            }
+
+            removeSelectedDevice(device);
         }
 
     };
+
 
     @Override
     public void onClick(View v) {
         if (v.getId() == R.id.btnOpenCamera) {
             // select a uvc device
-            if (mCameraHelper != null) {
-                final List<UsbDevice> list = mCameraHelper.getDeviceList();
-                if (list != null && list.size() > 0) {
-                    mCameraHelper.selectDevice(list.get(0));
-                }
-            }
+            showDeviceListDialog();
         } else if (v.getId() == R.id.btnCloseCamera) {
             // close camera
-            if (mCameraHelper != null) {
+            if (mCameraHelper != null && mIsCameraConnected) {
                 mCameraHelper.closeCamera();
             }
         }

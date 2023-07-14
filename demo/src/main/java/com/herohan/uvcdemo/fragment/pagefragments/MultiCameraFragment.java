@@ -13,16 +13,23 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.herohan.uvcapp.CameraHelper;
 import com.herohan.uvcapp.ICameraHelper;
 import com.herohan.uvcdemo.MultiCameraNewActivity;
 import com.herohan.uvcdemo.R;
+import com.herohan.uvcdemo.fragment.CameraControlsDialogFragment;
 import com.herohan.uvcdemo.fragment.DeviceListDialogFragment;
+import com.herohan.uvcdemo.fragment.VideoFormatDialogFragment;
+import com.serenegiant.opengl.renderer.MirrorMode;
 import com.serenegiant.usb.Size;
 import com.serenegiant.usb.UVCCamera;
 import com.serenegiant.usb.UVCParam;
@@ -64,8 +71,22 @@ public class MultiCameraFragment extends Fragment implements View.OnClickListene
     private Button btnCloseCameraLeft;
     private Button btnOpenCameraRight;
     private Button btnCloseCameraRight;
+    private DeviceListDialogFragment mDeviceListDialog;
+    private VideoFormatDialogFragment mVideoFormatDialog;
 
+    private int mPreviewRotation = 0;
 
+    private boolean mIsCameraConnected = false;
+    private UsbDevice mUsbDevice;
+    /**
+     * Camera preview width
+     */
+    private int mPreviewWidth = DEFAULT_WIDTH;
+    /**
+     * Camera preview height
+     */
+    private int mPreviewHeight = DEFAULT_HEIGHT;
+    private CameraControlsDialogFragment mControlsDialog;
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -77,12 +98,15 @@ public class MultiCameraFragment extends Fragment implements View.OnClickListene
         svCameraViewRight = view.findViewById(R.id.svCameraViewRight);
         svCameraViewLeft = view.findViewById(R.id.svCameraViewLeft);
 
-
-
         // Inflate the layout for this fragment
         return view;
     }
-
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
+        // Initializ e mCameraHelper and other necessary variables
+    }
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
@@ -109,9 +133,219 @@ public class MultiCameraFragment extends Fragment implements View.OnClickListene
     }
 
     private void initViews() {
+
+
         setCameraViewLeft();
         setCameraViewRight();
     }
+
+
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_control) {
+            showCameraControlsDialog();
+        } else if (id == R.id.action_video_format_left) {
+            showVideoFormatDialogLeft();
+        } else if (id == R.id.action_video_format_right) {
+            showVideoFormatDialogRight();
+        } else if (id == R.id.action_rotate_90_CW) {
+            rotateBy(90);
+        } else if (id == R.id.action_rotate_90_CCW) {
+            rotateBy(-90);
+        } else if (id == R.id.action_flip_horizontally) {
+            flipHorizontally();
+        } else if (id == R.id.action_flip_vertically) {
+            flipVertically();
+        } else if (id == R.id.action_device){
+            showDeviceListDialog();
+
+        }
+
+        return true;
+    }
+
+
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, MenuInflater inflater) {
+        inflater.inflate(R.menu.menu_multi_camera, menu);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
+    @Override
+    public void onPrepareOptionsMenu(Menu menu) {
+        super.onPrepareOptionsMenu(menu);
+        menu.findItem(R.id.action_control).setVisible(true);
+        menu.findItem(R.id.action_video_format_left).setVisible(true);
+        menu.findItem(R.id.action_video_format_right).setVisible(true);
+        menu.findItem(R.id.action_rotate_90_CW).setVisible(true);
+        menu.findItem(R.id.action_rotate_90_CCW).setVisible(true);
+        menu.findItem(R.id.action_flip_horizontally).setVisible(true);
+        menu.findItem(R.id.action_flip_vertically).setVisible(true);
+//        if (mCameraHelperRight != null && mCameraHelperRight.isCameraOpened()) {
+//            menu.findItem(R.id.action_control).setVisible(true);
+//            menu.findItem(R.id.action_video_format).setVisible(true);
+//            menu.findItem(R.id.action_rotate_90_CW).setVisible(true);
+//            menu.findItem(R.id.action_rotate_90_CCW).setVisible(true);
+//            menu.findItem(R.id.action_flip_horizontally).setVisible(true);
+//            menu.findItem(R.id.action_flip_vertically).setVisible(true);
+//        } else {
+//            menu.findItem(R.id.action_control).setVisible(false);
+//            menu.findItem(R.id.action_video_format).setVisible(false);
+//            menu.findItem(R.id.action_rotate_90_CW).setVisible(false);
+//            menu.findItem(R.id.action_rotate_90_CCW).setVisible(false);
+//            menu.findItem(R.id.action_flip_horizontally).setVisible(false);
+//            menu.findItem(R.id.action_flip_vertically).setVisible(false);
+//        }
+    }
+    private void showVideoFormatDialogLeft() {
+        if (mVideoFormatDialog != null && mVideoFormatDialog.isAdded()) {
+            return;
+        }
+
+        mVideoFormatDialog = new VideoFormatDialogFragment(
+                mCameraHelperLeft.getSupportedFormatList(),
+                mCameraHelperLeft.getPreviewSize());
+
+        mVideoFormatDialog.setOnVideoFormatSelectListener(size -> {
+            if (mCameraHelperLeft != null && mCameraHelperLeft.isCameraOpened()) {
+                mCameraHelperLeft.stopPreview();
+                mCameraHelperLeft.setPreviewSize(size);
+                mCameraHelperLeft.startPreview();
+
+                resizePreviewView(size);
+            }
+        });
+        mVideoFormatDialog.show(getChildFragmentManager(), "video_format_dialog");
+    }
+    private void showVideoFormatDialogRight() {
+        if (mVideoFormatDialog != null && mVideoFormatDialog.isAdded()) {
+            return;
+        }
+
+        mVideoFormatDialog = new VideoFormatDialogFragment(
+                mCameraHelperRight.getSupportedFormatList(),
+                mCameraHelperRight.getPreviewSize());
+        mVideoFormatDialog.setOnVideoFormatSelectListener(size -> {
+            if (mCameraHelperRight != null && mCameraHelperRight.isCameraOpened()) {
+                mCameraHelperRight.stopPreview();
+                mCameraHelperRight.setPreviewSize(size);
+                mCameraHelperRight.startPreview();
+
+                resizePreviewView(size);
+            }
+        });
+
+        mVideoFormatDialog.show(getChildFragmentManager(), "video_format_dialog");
+    }
+    private void resizePreviewView(Size size) {
+        // Update the preview size
+        mPreviewWidth = size.width;
+        mPreviewHeight = size.height;
+        // Set the aspect ratio of SurfaceView to match the aspect ratio of the camera
+        svCameraViewLeft.setAspectRatio(mPreviewWidth, mPreviewHeight);
+        svCameraViewRight.setAspectRatio(mPreviewWidth, mPreviewHeight);
+
+    }
+    private void showCameraControlsDialog() {
+        if (mControlsDialog == null) {
+            mControlsDialog = new CameraControlsDialogFragment(mCameraHelperLeft);
+            mControlsDialog = new CameraControlsDialogFragment(mCameraHelperRight);
+
+        }
+
+        // When DialogFragment is not showing
+        if (!mControlsDialog.isAdded()) {
+            mControlsDialog.show(getChildFragmentManager(), "controls_dialog");
+        }
+    }
+    private void showDeviceListDialog() {
+//        if (mDeviceListDialog != null && mDeviceListDialog.isAdded()) {
+//            return;
+//        }
+//
+//        mDeviceListDialog = new DeviceListDialogFragment(mCameraHelperLeft, mIsCameraConnected ? mUsbDevice : null);
+//        mDeviceListDialog = new DeviceListDialogFragment(mCameraHelperRight, mIsCameraConnected ? mUsbDevice : null);
+//
+//        mDeviceListDialog.setOnDeviceItemSelectListener(usbDevice -> {
+//            if (mIsCameraConnected) {
+//                mCameraHelperRight.closeCamera();
+//                mCameraHelperLeft.closeCamera();
+//
+//            }
+//            mUsbDevice = usbDevice;
+//            selectDevice(mUsbDevice);
+//        });
+//
+//        mDeviceListDialog.show(getChildFragmentManager(), "device_list");
+        Toast.makeText(requireContext(), "This function is only available for custom single preview", Toast.LENGTH_SHORT).show();
+
+    }
+
+    private void selectDevice(final UsbDevice device) {
+        Toast.makeText(requireContext(), "This function is only available for custom single preview", Toast.LENGTH_SHORT).show();
+    }
+    private void rotateBy(int angle) {
+        mPreviewRotation += angle;
+        mPreviewRotation %= 360;
+        if (mPreviewRotation < 0) {
+            mPreviewRotation += 360;
+        }
+
+        if (mCameraHelperLeft != null) {
+            mCameraHelperLeft.setPreviewConfig(
+                    mCameraHelperLeft.getPreviewConfig().setRotation(mPreviewRotation));
+        }
+        if (mCameraHelperRight != null) {
+            mCameraHelperRight.setPreviewConfig(
+                    mCameraHelperRight.getPreviewConfig().setRotation(mPreviewRotation));
+        }
+    }
+
+    private void flipHorizontally() {
+        if (mCameraHelperRight != null) {
+            mCameraHelperRight.setPreviewConfig(
+                    mCameraHelperRight.getPreviewConfig().setMirror(MirrorMode.MIRROR_HORIZONTAL));
+        }
+        if (mCameraHelperLeft != null) {
+            mCameraHelperLeft.setPreviewConfig(
+                    mCameraHelperLeft.getPreviewConfig().setMirror(MirrorMode.MIRROR_HORIZONTAL));
+        }
+    }
+
+    private void flipVertically() {
+        if (mCameraHelperLeft != null) {
+            mCameraHelperLeft.setPreviewConfig(
+                    mCameraHelperLeft.getPreviewConfig().setMirror(MirrorMode.MIRROR_VERTICAL));
+        }
+        if (mCameraHelperRight != null) {
+            mCameraHelperRight.setPreviewConfig(
+                    mCameraHelperRight.getPreviewConfig().setMirror(MirrorMode.MIRROR_VERTICAL));
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     private void initListeners() {
         btnOpenCameraLeft.setOnClickListener(this);
@@ -122,13 +356,14 @@ public class MultiCameraFragment extends Fragment implements View.OnClickListene
     }
 
     private void setCameraViewLeft() {
-        svCameraViewLeft.setAspectRatio(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        svCameraViewLeft.setAspectRatio(mPreviewWidth, mPreviewHeight);
 
         svCameraViewLeft.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
             public void surfaceCreated(@NonNull SurfaceHolder holder) {
                 if (mCameraHelperLeft != null) {
                     mCameraHelperLeft.addSurface(holder.getSurface(), false);
+
                 }
             }
 
@@ -141,13 +376,14 @@ public class MultiCameraFragment extends Fragment implements View.OnClickListene
             public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
                 if (mCameraHelperLeft != null) {
                     mCameraHelperLeft.removeSurface(holder.getSurface());
+
                 }
             }
         });
     }
 
     private void setCameraViewRight() {
-        svCameraViewRight.setAspectRatio(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        svCameraViewRight.setAspectRatio(mPreviewWidth, mPreviewHeight);
 
         svCameraViewRight.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
