@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class EntryActivity extends AppCompatActivity implements BottomNavigationView
-        .OnNavigationItemSelectedListener{
+        .OnNavigationItemSelectedListener {
     BottomNavigationView bottomNavigationView;
 
     CustomPreviewFragment customPreviewFragment;
@@ -49,13 +49,23 @@ public class EntryActivity extends AppCompatActivity implements BottomNavigation
 
         bottomNavigationView
                 .setOnNavigationItemSelectedListener(this);
-        bottomNavigationView.setSelectedItemId(R.id.home);
+        bottomNavigationView.setSelectedItemId(R.id.custom_cam);
+        List<String> needPermissions = new ArrayList<>();
+
+        needPermissions.add(Manifest.permission.CAMERA);
+        XXPermissions.with(this)
+                .permission(needPermissions)
+                .request((permissions, all) -> {
+                            if (!all) {
+                                return;
+                            }
+                        }
+                );
     }
 
     @Override
     public boolean
-    onNavigationItemSelected(@NonNull MenuItem item)
-    {
+    onNavigationItemSelected(@NonNull MenuItem item) {
 
         switch (item.getItemId()) {
             case R.id.home:
@@ -98,5 +108,6 @@ public class EntryActivity extends AppCompatActivity implements BottomNavigation
         }
         return false;
     }
+
 
 }
