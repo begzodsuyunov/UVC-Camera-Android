@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
 import android.os.ConditionVariable;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
@@ -20,19 +21,26 @@ import android.view.SurfaceHolder;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.Toast;
 
 import com.example.javauvcproject.R;
 import com.example.javauvcproject.fragments.supportingfragments.CameraControlsDialogFragment;
 import com.example.javauvcproject.fragments.supportingfragments.DeviceListDialogFragment;
 import com.example.javauvcproject.fragments.supportingfragments.VideoFormatDialogFragment;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.herohan.uvcapp.CameraHelper;
 import com.herohan.uvcapp.ICameraHelper;
+import com.herohan.uvcapp.VideoCapture;
 import com.serenegiant.opengl.renderer.MirrorMode;
 import com.serenegiant.usb.Size;
 import com.serenegiant.usb.UVCCamera;
 import com.serenegiant.usb.UVCParam;
+import com.serenegiant.utils.FileUtils;
+import com.serenegiant.utils.UriHelper;
 import com.serenegiant.widget.AspectRatioSurfaceView;
 
+import java.io.File;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 
@@ -42,6 +50,7 @@ public class CustomPreviewFragment extends Fragment implements View.OnClickListe
 
     private static final int DEFAULT_WIDTH = 640;
     private static final int DEFAULT_HEIGHT = 480;
+    private FloatingActionButton bthCaptureVideo;
 
     /**
      * Camera preview width
@@ -91,6 +100,7 @@ public class CustomPreviewFragment extends Fragment implements View.OnClickListe
         btnOpenCamera = view.findViewById(R.id.btnOpenCamera);
         btnCloseCamera = view.findViewById(R.id.btnCloseCamera);
         mCameraViewMain = view.findViewById(R.id.svCameraViewMain);
+        bthCaptureVideo = view.findViewById(R.id.btnCaptureVideo);
 
 
         // Inflate the layout for this fragment
@@ -166,6 +176,8 @@ public class CustomPreviewFragment extends Fragment implements View.OnClickListe
 
         btnOpenCamera.setOnClickListener(this);
         btnCloseCamera.setOnClickListener(this);
+        bthCaptureVideo.setOnClickListener(this);
+
     }
 
     private void removeSelectedDevice(UsbDevice device) {
@@ -406,10 +418,21 @@ public class CustomPreviewFragment extends Fragment implements View.OnClickListe
         if (v.getId() == R.id.btnOpenCamera) {
             // select a uvc device
             showDeviceListDialog();
+
         } else if (v.getId() == R.id.btnCloseCamera) {
             // close camera
             if (mCameraHelper != null && mIsCameraConnected) {
                 mCameraHelper.closeCamera();
+            }
+        } else if (v.getId() == R.id.btnCaptureVideo) {
+            if (mCameraHelper != null && mCameraHelper.isCameraOpened()) {
+                if (mCameraHelper.isRecording()) {
+                    stopRecord();
+                } else {
+                    startRecord();
+                }
+            } else {
+                Toast.makeText(requireActivity(), "Please open the camera first.", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -439,6 +462,51 @@ public class CustomPreviewFragment extends Fragment implements View.OnClickListe
         if (mCameraHelper != null) {
             mCameraHelper.setPreviewConfig(
                     mCameraHelper.getPreviewConfig().setMirror(MirrorMode.MIRROR_VERTICAL));
+        }
+    }
+
+    private void startRecord() {
+        File file = FileUtils.getCaptureFile(requireContext(), Environment.DIRECTORY_MOVIES, ".mp4");
+        VideoCapture.OutputFileOptions options =
+                new VideoCapture.OutputFileOptions.Builder(file).build();
+
+//        ContentValues contentValues = new ContentValues();
+//        contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, "NEW_VIDEO");
+//        contentValues.put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4");
+//
+//        VideoCapture.OutputFileOptions options = new VideoCapture.OutputFileOptions.Builder(
+//                getContentResolver(),
+//                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+//                contentValues).build();
+
+        mCameraHelper.startRecording(options, new VideoCapture.OnVideoCaptureCallback() {
+            @Override
+            public void onStart() {
+            }
+
+            @Override
+            public void onVideoSaved(@NonNull VideoCapture.OutputFileResults outputFileResults) {
+                Toast.makeText(
+                        requireActivity(),
+                        "save \"" + UriHelper.getPath(requireActivity(), outputFileResults.getSavedUri()) + "\"",
+                        Toast.LENGTH_SHORT).show();
+
+                bthCaptureVideo.setColorFilter(0);
+            }
+
+            @Override
+            public void onError(int videoCaptureError, @NonNull String message, @Nullable Throwable cause) {
+                Toast.makeText(requireActivity(), message, Toast.LENGTH_LONG).show();
+
+                bthCaptureVideo.setColorFilter(0);
+            }
+        });
+
+        bthCaptureVideo.setColorFilter(0x7fff0000);
+    }
+    private void stopRecord() {
+        if (mCameraHelper != null) {
+            mCameraHelper.stopRecording();
         }
     }
 }
