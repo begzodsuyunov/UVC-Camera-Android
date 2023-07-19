@@ -1,4 +1,4 @@
-package com.example.javauvcproject.fragments.supportingfragments;
+package com.example.javauvcproject.supportingfragments;
 
 import android.app.Dialog;
 import android.hardware.usb.UsbDevice;

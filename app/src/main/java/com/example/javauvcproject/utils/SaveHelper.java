@@ -44,14 +44,26 @@ public class SaveHelper {
         return FileProvider.getUriForFile(context, AUTHORITY, photoFile);
     }
 
-    public static File getSaveVideoFile(Context context) {
-        File outputDirectory = getOutputDirectory(context);
-        return new File(outputDirectory,
-                new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date()) + ".mp4");
-    }
+//    public static File getSaveVideoFile(Context context, long videoStartTime) {
+//        File outputDirectory = getOutputDirectory(context);
+//        return new File(outputDirectory,
+//                new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date(videoStartTime)) + ".mp4");
+//    }
+public static File getSaveVideoFile(Context context, long videoStartTime) {
+    File outputDirectory = getOutputDirectory(context);
+    Date date = new Date(videoStartTime);
 
-    public static Uri getSaveVideoUri(Context context) {
-        File videoFile = getSaveVideoFile(context);
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy_MM_dd HH:mm:ss", Locale.getDefault());
+    String formattedDate = sdf.format(date);
+
+    // Modify the seconds and milliseconds to '00'
+    formattedDate = formattedDate.substring(0, formattedDate.length() - 2) + "00";
+
+    return new File(outputDirectory, formattedDate + ".mp4");
+}
+
+    public static Uri getSaveVideoUri(Context context, long videoStartTime) {
+        File videoFile = getSaveVideoFile(context, videoStartTime);
         return FileProvider.getUriForFile(context, AUTHORITY, videoFile);
     }
 }
