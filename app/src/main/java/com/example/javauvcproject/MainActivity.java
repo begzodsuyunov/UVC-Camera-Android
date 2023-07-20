@@ -20,7 +20,6 @@ import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.View;
 import android.widget.Toast;
-
 import com.example.javauvcproject.databinding.ActivityMainBinding;
 import com.example.javauvcproject.supportingfragments.CameraControlsDialogFragment;
 import com.example.javauvcproject.supportingfragments.DeviceListDialogFragment;
@@ -39,6 +38,7 @@ import com.serenegiant.widget.AspectRatioSurfaceView;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -94,10 +94,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private long videoStartTime;
     private static final long VIDEO_DURATION = 60000; // 1 minute in milliseconds
     private Handler mHandler = new Handler();
-    private Runnable mRecordRunnable;
-    private HandlerThread recordingThread;
-    private Handler recordingHandler;
+    private Runnable mStopRecordRunnable;
+    private Runnable mStartRecordRunnable;
+
+    private Handler recordingHandler = new Handler();
     private DeviceListDialogFragment mDeviceListDialog;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -133,29 +135,35 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         setTitle(R.string.entry_custom_preview);
         initViews();
-
+        InitializingRunnable();
 //        mHandlerThread = new HandlerThread(TAG);
 //        mHandlerThread.start();
 //        mAsyncHandler = new Handler(mHandlerThread.getLooper());
     }
+
     private void initCamera() {
         if (!mIsCameraConnected) {
             clearCameraHelper();
         }
         initCameraHelper();
     }
+
     @Override
     public void onDestroy() {
         super.onDestroy();
+
         timerHandler.removeCallbacksAndMessages(null); // Stop the timer to avoid memory leaks
+
     }
+
     @Override
     public void onStart() {
         super.onStart();
-        //initCameraHelper();
+        initCameraHelper();
         timerHandler.postDelayed(timerRunnable, 1000); // Start the timer to update UI every second
 
     }
+
     private void initViews() {
         mBinding.svCameraViewMain.setAspectRatio(mPreviewWidth, mPreviewHeight);
         mCameraViewMain = mBinding.svCameraViewMain;
@@ -187,6 +195,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         initCameraHelper();
 
     }
+
     private void removeSelectedDevice(UsbDevice device) {
         mReadyUsbDeviceList.remove(device);
         mReadyDeviceConditionVariable.open();
@@ -198,6 +207,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         getMenuInflater().inflate(R.menu.menu_custom_preview, menu);
         return true;
     }
+
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         if (mIsCameraConnected) {
@@ -216,38 +226,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return super.onPrepareOptionsMenu(menu);
     }
 
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        int id = item.getItemId();
-        if (id == R.id.action_video_format) {
-            showVideoFormatDialog();
-        } else if (id == R.id.action_rotate_90_CW) {
-            rotateBy(90);
-        } else if (id == R.id.action_rotate_90_CCW) {
-            rotateBy(-90);
-        } else if (id == R.id.action_flip_horizontally) {
-            flipHorizontally();
-        } else if (id == R.id.action_flip_vertically) {
-            flipVertically();
-        }
 
-        return true;
-    }
-
-    private void showDeviceListDialog() {
-
-
-        mDeviceListDialog = new DeviceListDialogFragment(mCameraHelper, mIsCameraConnected ? mUsbDevice : null);
-        mDeviceListDialog.setOnDeviceItemSelectListener(usbDevice -> {
-            if (mCameraHelper != null && mIsCameraConnected) {
-                mCameraHelper.closeCamera();
-            }
-            mUsbDevice = usbDevice;
-            selectDevice(mUsbDevice);
-        });
-
-        mDeviceListDialog.show(getSupportFragmentManager(), "device_list");
-    }
     private void showVideoFormatDialog() {
         if (mVideoFormatDialog != null && mVideoFormatDialog.isAdded()) {
             return;
@@ -307,6 +286,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //            mFormatDialog.dismiss();
 //        }
     }
+
     private void clearCameraHelper() {
         if (DEBUG) Log.d(TAG, "clearCameraHelper:");
         if (mCameraHelper != null) {
@@ -321,6 +301,315 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             mCameraHelper.selectDevice(device);
         }
     }
+
+
+    @Override
+    public void onClick(View v) {
+        if (v.getId() == R.id.btnOpenCamera) {
+            // Camera permission is already checked in onCreate
+            // Proceed with opening the camera
+            showDeviceListDialog();
+        } else if (v.getId() == R.id.btnCloseCamera) {
+            // Close camera
+            if (mCameraHelper != null && mIsCameraConnected) {
+                mCameraHelper.closeCamera();
+            }
+        } else 
+            if (v.getId() == R.id.btnCaptureVideo) {
+                recordingHandler.removeCallbacksAndMessages(mStartRecordRunnable);
+                recordingHandler.removeCallbacksAndMessages(mStopRecordRunnable);
+
+            if (mCameraHelper != null) {
+                if (mCameraHelper.isRecording()) {
+                    // Stop recording when the button is clicked again
+                    stopRecord();
+                } else {
+                    // Start recording
+                    starting1MinRecording();
+                }
+            }
+
+        }
+    }
+
+    private void InitializingRunnable() {
+        mStopRecordRunnable = () -> {
+            stopRecord();
+            recordingHandler.postDelayed(mStartRecordRunnable, 300L);
+        };
+
+        mStartRecordRunnable = () -> {
+            startRecord();
+            recordingHandler.postDelayed(mStopRecordRunnable, 60_000 - 300L);
+
+        };
+    }
+
+    private void starting1MinRecording() {
+        //Calculate the start time of the current video segment aligned to the nearest minute
+        Calendar calendarSec = Calendar.getInstance();
+
+        // Calculate the remaining time to the next minute
+        long calendarSecond = calendarSec.get(Calendar.SECOND);
+        long calendarMili = calendarSec.get(Calendar.MILLISECOND);
+        long delay = (60 - calendarSecond) * 1000;
+        System.out.println(calendarMili + "starting milli");
+
+        startRecord();
+        // Start the timer to automatically stop recording after the remaining time
+        recordingHandler.postDelayed(mStopRecordRunnable, delay);
+    }
+
+    private void startRecord() {
+        // Check if the camera is opened and not already recording
+        if (mCameraHelper != null && mCameraHelper.isCameraOpened() && !mCameraHelper.isRecording()) {
+            Log.d(TAG, "startRecord: Recording started");
+
+            // Calculate the start time of the current video segment aligned to the nearest minute
+            long currentTime = System.currentTimeMillis();
+            videoStartTime = (currentTime / VIDEO_DURATION) * VIDEO_DURATION;
+
+            // Calculate the remaining time to the next minute
+//            long remainingTime = videoStartTime + VIDEO_DURATION - currentTime;
+//
+//            // Start the timer to automatically stop recording after the remaining time
+//            videoTimer = new Timer();
+//            videoTimer.schedule(new TimerTask() {
+//                @Override
+//                public void run() {
+//                    runOnUiThread(() -> stopRecord());
+//                }
+//            }, remainingTime);
+//
+//            // Create a new timer to schedule the next recording after 1 minute
+//            Timer nextVideoTimer = new Timer();
+//            nextVideoTimer.schedule(new TimerTask() {
+//                @Override
+//                public void run() {
+//                    runOnUiThread(() -> startRecord());
+//                }
+//            }, VIDEO_DURATION);
+
+            // Start the video recording on the recordingHandler
+//            recordingHandler.post(() -> {
+//                File videoFile = SaveHelper.getSaveVideoFile(MainActivity.this, videoStartTime);
+//                File videoDir = videoFile.getParentFile(); // Get the parent directory
+//
+//                Uri videoUri = SaveHelper.getSaveVideoUri(MainActivity.this, videoStartTime);
+//                VideoCapture.OutputFileOptions options = new VideoCapture.OutputFileOptions.Builder(videoFile).build();
+//
+//                if (videoDir != null && !videoDir.exists()) {
+//                    boolean created = videoDir.mkdirs(); // Create the parent directory if it doesn't exist
+//                    if (!created) {
+//                        Log.e(TAG, "Failed to create video directory");
+//                        return;
+//                    }
+//                }
+////                mHandler.post(() -> {
+////                    // Update the UI elements here
+////                    updateTimerUI();
+////                });
+//                mCameraHelper.startRecording(options, new VideoCapture.OnVideoCaptureCallback() {
+//                    @Override
+//                    public void onStart() {
+//                        Log.d(TAG, "onStart: Recording started callback");
+//                        Toast.makeText(MainActivity.this, "recording ...", Toast.LENGTH_SHORT).show();
+//
+//
+//                    }
+//
+//                    @Override
+//                    public void onVideoSaved(@NonNull VideoCapture.OutputFileResults outputFileResults) {
+//                        Log.d(TAG, "onVideoSaved: Video saved");
+//                        Toast.makeText(
+//                                MainActivity.this,
+//                                "Video saved at: " + videoUri.getPath(),
+//                                Toast.LENGTH_SHORT).show();
+////                        // Release recording resources before starting a new recording
+////                        if (recordingHandler != null) {
+////                            recordingHandler.removeCallbacksAndMessages(null);
+////                            recordingHandler.getLooper().quitSafely();
+////                            recordingHandler = null;
+////                        }
+////
+////                        // Set isRecording to false since the recording is stopped
+////                        isRecording = false;
+////
+////                        // Start a new recording after a brief delay (optional)
+////                        mHandler.postDelayed(() -> startRecord(), 500);
+////                        //mHandler.post(() -> startRecord());
+//
+//                    }
+//
+//                    @Override
+//                    public void onError(int videoCaptureError, @NonNull String message, @Nullable Throwable cause) {
+//                        Log.e(TAG, "onError: Video recording error: " + message, cause);
+//                        Toast.makeText(MainActivity.this, "Video recording error: " + message, Toast.LENGTH_LONG).show();
+//
+//                    }
+//                });
+//                mBinding.btnCaptureVideo.setColorFilter(0x7fff0000);
+////                isRecording = true;
+//            });
+
+            recordingHandler.post(() -> {
+                File videoFile = SaveHelper.getSaveVideoFile(MainActivity.this, videoStartTime);
+                File videoDir = videoFile.getParentFile(); // Get the parent directory
+
+                Uri videoUri = SaveHelper.getSaveVideoUri(MainActivity.this, videoStartTime);
+                VideoCapture.OutputFileOptions options = new VideoCapture.OutputFileOptions.Builder(videoFile).build();
+
+                if (videoDir != null && !videoDir.exists()) {
+                    boolean created = videoDir.mkdirs(); // Create the parent directory if it doesn't exist
+                    if (!created) {
+                        Log.e(TAG, "Failed to create video directory");
+                        return;
+                    }
+                }
+//                mHandler.post(() -> {
+//                    // Update the UI elements here
+//                    updateTimerUI();
+//                });
+                mCameraHelper.startRecording(options, new VideoCapture.OnVideoCaptureCallback() {
+                    @Override
+                    public void onStart() {
+                        Log.d(TAG, "onStart: Recording started callback" + videoStartTime );
+                        Toast.makeText(MainActivity.this, "recording ...", Toast.LENGTH_SHORT).show();
+                        mBinding.btnCaptureVideo.setColorFilter(0x7fff0000);
+                        System.out.println(videoStartTime + "starting video");
+
+
+                    }
+
+                    @Override
+                    public void onVideoSaved(@NonNull VideoCapture.OutputFileResults outputFileResults) {
+                        Log.d(TAG, "onVideoSaved: Video saved");
+                        Toast.makeText(
+                                MainActivity.this,
+                                "Video saved at: " + videoUri.getPath(),
+                                Toast.LENGTH_SHORT).show();
+                        System.out.println("saved video");
+
+//                        // Release recording resources before starting a new recording
+//                        if (recordingHandler != null) {
+//                            recordingHandler.removeCallbacksAndMessages(null);
+//                            recordingHandler.getLooper().quitSafely();
+//                            recordingHandler = null;
+//                        }
+//
+//                        // Set isRecording to false since the recording is stopped
+//                        isRecording = false;
+//
+//                        // Start a new recording after a brief delay (optional)
+//                        mHandler.postDelayed(() -> startRecord(), 500);
+//                        //mHandler.post(() -> startRecord());
+
+                    }
+
+                    @Override
+                    public void onError(int videoCaptureError, @NonNull String message, @Nullable Throwable cause) {
+                        Log.e(TAG, "onError: Video recording error: " + message, cause);
+                        Toast.makeText(MainActivity.this, "Video recording error: " + message, Toast.LENGTH_LONG).show();
+
+                    }
+                });
+//                isRecording = true;
+            });
+        }
+    }
+
+    private void stopRecord() {
+        if (mCameraHelper != null && mCameraHelper.isRecording()) {
+            // Stop recording
+            mCameraHelper.stopRecording();
+
+            // Cancel the timer as the video is manually stopped
+//            videoTimer.cancel();
+            // Cancel the timer as the video is manually stopped
+//            timerHandler.removeCallbacks(timerRunnable);
+
+// Release recording resources
+
+            mBinding.btnCaptureVideo.setColorFilter(0x00000000);
+//            isRecording = false;
+            Toast.makeText(this, "asdfasdf", Toast.LENGTH_SHORT).show();
+            Calendar calendarSec = Calendar.getInstance();
+
+            // Calculate the remaining time to the next minute
+            long calendarSecond = calendarSec.get(Calendar.SECOND);
+            long calendarMili = calendarSec.get(Calendar.MILLISECOND);
+            long delay = (60 - calendarSecond) * 1000;
+            System.out.println(calendarMili + "stopping milli");
+
+            System.out.println(calendarSecond + "stopping second");
+
+        }
+    }
+
+
+    private void updateTimerUI() {
+        long currentTime = System.currentTimeMillis();
+        long elapsedTime = currentTime - videoStartTime;
+        long remainingTime = VIDEO_DURATION - elapsedTime;
+
+        if (elapsedTime >= VIDEO_DURATION) {
+            // The video recording duration has ended
+            mBinding.tvVideoCurrentTime.setText("00:00:00");
+            stopRecord();
+            return;
+        }
+
+        // Calculate the seconds, minutes, and hours for elapsed and remaining time
+        long elapsedSeconds = elapsedTime / 1000;
+        long elapsedMinutes = elapsedSeconds / 60;
+        long elapsedHours = elapsedMinutes / 60;
+
+        long remainingSeconds = remainingTime / 1000;
+        long remainingMinutes = remainingSeconds / 60;
+        long remainingHours = remainingMinutes / 60;
+
+        // Format the time strings to display in the TextView
+        String formattedElapsedTime = String.format(Locale.getDefault(), "%02d:%02d:%02d", elapsedHours, elapsedMinutes % 60, elapsedSeconds % 60);
+        String formattedRemainingTime = String.format(Locale.getDefault(), "%02d:%02d:%02d", remainingHours, remainingMinutes % 60, remainingSeconds % 60);
+
+        // Update the TextView with the formatted time strings
+        mBinding.tvVideoCurrentTime.setText(formattedElapsedTime);
+    }
+
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_video_format) {
+            showVideoFormatDialog();
+        } else if (id == R.id.action_rotate_90_CW) {
+            rotateBy(90);
+        } else if (id == R.id.action_rotate_90_CCW) {
+            rotateBy(-90);
+        } else if (id == R.id.action_flip_horizontally) {
+            flipHorizontally();
+        } else if (id == R.id.action_flip_vertically) {
+            flipVertically();
+        }
+
+        return true;
+    }
+
+    private void showDeviceListDialog() {
+
+
+        mDeviceListDialog = new DeviceListDialogFragment(mCameraHelper, mIsCameraConnected ? mUsbDevice : null);
+        mDeviceListDialog.setOnDeviceItemSelectListener(usbDevice -> {
+            if (mCameraHelper != null && mIsCameraConnected) {
+                mCameraHelper.closeCamera();
+            }
+            mUsbDevice = usbDevice;
+            selectDevice(mUsbDevice);
+        });
+
+        mDeviceListDialog.show(getSupportFragmentManager(), "device_list");
+    }
+
     private final ICameraHelper.StateCallback mStateListener = new ICameraHelper.StateCallback() {
         private final String LOG_PREFIX = "ListenerRight#";
 
@@ -391,6 +680,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                 invalidateOptionsMenu();
                 closeAllDialogFragment();
+                mBinding.btnCaptureVideo.setColorFilter(0x00000000);
+
             }
 
 
@@ -417,58 +708,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (device.equals(mUsbDevice)) {
                 mUsbDevice = null;
             }
-
             removeSelectedDevice(device);
         }
 
     };
 
-    @Override
-    public void onClick(View v) {
-        if (v.getId() == R.id.btnOpenCamera) {
-            // Camera permission is already checked in onCreate
-            // Proceed with opening the camera
-            showDeviceListDialog();
-        } else if (v.getId() == R.id.btnCloseCamera) {
-            // Close camera
-            if (mCameraHelper != null && mIsCameraConnected) {
-                mCameraHelper.closeCamera();
-            }
-        } else if (v.getId() == R.id.btnCaptureVideo) {
-            if (recordingHandler != null) {
-                // Stop recording when the button is clicked again
-                stopRecord();
-            } else {
-                // Start recording
-                startRecord();
-            }
-        }
-    }
-    //    private void stopEntireRecording() {
-//        // Check if the camera is opened and currently recording
-//        if (mCameraHelper != null && mCameraHelper.isCameraOpened() && isRecording) {
-//            Log.d(TAG, "stopEntireRecording: Entire recording stopped");
-//
-//            // Stop the ongoing video recording
-//            stopRecord();
-//
-//            // Stop the next scheduled video recording (if any)
-//            if (recordingHandler != null) {
-//                recordingHandler.removeCallbacksAndMessages(null);
-//                recordingHandler.getLooper().quitSafely();
-//                recordingHandler = null;
-//            }
-//
-//            // Cancel the next scheduled video recording (if any)
-//            if (videoTimer != null) {
-//                videoTimer.cancel();
-//            }
-//
-//            // Reset the recording state and update UI
-//            isRecording = false;
-//            mBinding.btnCaptureVideo.setColorFilter(0x00000000);
-//        }
-//    }
     private void rotateBy(int angle) {
         mPreviewRotation += angle;
         mPreviewRotation %= 360;
@@ -493,134 +737,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (mCameraHelper != null) {
             mCameraHelper.setPreviewConfig(
                     mCameraHelper.getPreviewConfig().setMirror(MirrorMode.MIRROR_VERTICAL));
-        }
-    }
-
-    private void startRecord() {
-        // Check if the camera is opened and not already recording
-        if (mCameraHelper != null && mCameraHelper.isCameraOpened() && !isRecording) {
-            Log.d(TAG, "startRecord: Recording started");
-
-            // Calculate the start time of the current video segment aligned to the nearest minute
-            long currentTime = System.currentTimeMillis();
-            videoStartTime = (currentTime / VIDEO_DURATION) * VIDEO_DURATION;
-
-            // Calculate the remaining time to the next minute
-            long remainingTime = videoStartTime + VIDEO_DURATION - currentTime;
-
-            // Start the timer to automatically stop recording after the remaining time
-            videoTimer = new Timer();
-            videoTimer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    runOnUiThread(() -> stopRecord());
-                }
-            }, remainingTime);
-
-            // Create a new timer to schedule the next recording after 1 minute
-            Timer nextVideoTimer = new Timer();
-            nextVideoTimer.schedule(new TimerTask() {
-                @Override
-                public void run() {
-                    runOnUiThread(() -> startRecord());
-                }
-            }, VIDEO_DURATION);
-            // Create a new HandlerThread for recording if it doesn't exist
-            if (recordingHandler == null) {
-                recordingThread = new HandlerThread("RecordingThread");
-                recordingThread.start();
-                recordingHandler = new Handler(recordingThread.getLooper());
-            }
-
-            // Start the video recording on the recordingHandler
-            recordingHandler.post(() -> {
-                File videoFile = SaveHelper.getSaveVideoFile(MainActivity.this, videoStartTime);
-                File videoDir = videoFile.getParentFile(); // Get the parent directory
-
-                Uri videoUri = SaveHelper.getSaveVideoUri(MainActivity.this, videoStartTime);
-                VideoCapture.OutputFileOptions options = new VideoCapture.OutputFileOptions.Builder(videoFile).build();
-
-                if (videoDir != null && !videoDir.exists()) {
-                    boolean created = videoDir.mkdirs(); // Create the parent directory if it doesn't exist
-                    if (!created) {
-                        Log.e(TAG, "Failed to create video directory");
-                        return;
-                    }
-                }
-//                mHandler.post(() -> {
-//                    // Update the UI elements here
-//                    updateTimerUI();
-//                });
-                mCameraHelper.startRecording(options, new VideoCapture.OnVideoCaptureCallback() {
-                    @Override
-                    public void onStart() {
-                        Log.d(TAG, "onStart: Recording started callback");
-                        Toast.makeText(MainActivity.this, "recording ...", Toast.LENGTH_SHORT).show();
-
-
-                    }
-
-                    @Override
-                    public void onVideoSaved(@NonNull VideoCapture.OutputFileResults outputFileResults) {
-                        Log.d(TAG, "onVideoSaved: Video saved");
-                        Toast.makeText(
-                                MainActivity.this,
-                                "Video saved at: " + videoUri.getPath(),
-                                Toast.LENGTH_SHORT).show();
-                        // Release recording resources before starting a new recording
-                        if (recordingHandler != null) {
-                            recordingHandler.removeCallbacksAndMessages(null);
-                            recordingHandler.getLooper().quitSafely();
-                            recordingHandler = null;
-                        }
-
-                        // Set isRecording to false since the recording is stopped
-                        isRecording = false;
-
-                        // Start a new recording after a brief delay (optional)
-                        mHandler.postDelayed(() -> startRecord(), 500);
-                        //mHandler.post(() -> startRecord());
-
-                    }
-
-                    @Override
-                    public void onError(int videoCaptureError, @NonNull String message, @Nullable Throwable cause) {
-                        Log.e(TAG, "onError: Video recording error: " + message, cause);
-                        Toast.makeText(MainActivity.this, "Video recording error: " + message, Toast.LENGTH_LONG).show();
-
-                    }
-                });
-                // Use the main thread's Handler to update the UI elements
-                mHandler.post(() -> {
-                    // Update the UI elements here
-                    updateTimerUI();
-                });
-                mBinding.btnCaptureVideo.setColorFilter(0x7fff0000);
-                isRecording = true;
-            });
-        }
-    }
-    private void updateTimerUI() {
-        long currentTime = System.currentTimeMillis();
-        String formattedCurrentTime = timeFormat.format(new Date(currentTime));
-        mBinding.tvVideoCurrentTime.setText(formattedCurrentTime);
-    }
-    private void stopRecord() {
-        if (mCameraHelper != null && isRecording) {
-            // Stop recording
-            mCameraHelper.stopRecording();
-
-            // Cancel the timer as the video is manually stopped
-//            videoTimer.cancel();
-            // Cancel the timer as the video is manually stopped
-//            timerHandler.removeCallbacks(timerRunnable);
-
-// Release recording resources
-            recordingHandler.removeCallbacksAndMessages(null);
-            recordingHandler.getLooper().quitSafely();
-            recordingHandler = null;
-            mBinding.btnCaptureVideo.setColorFilter(0x00000000);
-            isRecording = false;
         }
     }
 
