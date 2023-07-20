@@ -41,13 +41,9 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
 
-   // implementation 'com.github.getActivity:XXPermissions:13.5'
-//    implementation 'com.github.warkiz.widget:indicatorseekbar:2.1.2'
+    implementation project(':libuvccam')
 
-    //implementation files('libs/libuvccamera.aar')
-    //implementation files('libs/XXPermissions-13.5.aar')
-
-    implementation 'com.herohan:UVCAndroid:1.0.4'
+    //implementation 'com.herohan:UVCAndroid:1.0.4'
 
 
 }
