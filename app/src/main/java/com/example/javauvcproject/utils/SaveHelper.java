@@ -53,7 +53,7 @@ public static File getSaveVideoFile(Context context, long videoStartTime) {
     File outputDirectory = getOutputDirectory(context);
     Date date = new Date(videoStartTime);
 
-    SimpleDateFormat sdf = new SimpleDateFormat("yyyy_MM_dd HH:mm:ss", Locale.getDefault());
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy_MM_ddHH:mm:ss", Locale.getDefault());
     String formattedDate = sdf.format(date);
 
     // Modify the seconds and milliseconds to '00'

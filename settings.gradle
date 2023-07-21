@@ -16,4 +16,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "JavaUVCProject"
 include ':app'
-include ':libuvccam'
+//include ':libuvccam'
