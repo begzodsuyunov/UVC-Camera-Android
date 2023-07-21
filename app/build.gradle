@@ -36,8 +36,8 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.5.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation files('D:/INHA/ffmpeg-6.1-1.5.9.jar')
-    implementation files('D:/INHA/javacpp-1.5.9.jar')
+    implementation files('libs/ffmpeg-6.1-1.5.9.jar')
+    implementation files('libs/javacpp-1.5.9.jar')
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
@@ -47,8 +47,8 @@ dependencies {
     //implementation 'org.bytedeco:ffmpeg-platform:4.5.1-1.5.6'
     //implementation 'org.bytedeco:javacv:1.5.6'
 
-    //implementation project(':libuvccam')
+    implementation project(':libuvccam')
 
-    implementation 'com.herohan:UVCAndroid:1.0.4'
+    //implementation 'com.herohan:UVCAndroid:1.0.4'
 
 }

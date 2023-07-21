@@ -356,6 +356,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mStopRecordRunnable = () -> {
             stopRecord();
             recordingHandler.postDelayed(mStartRecordRunnable, 300L);
+            //File videoFile = SaveHelper.getSaveVideoFile(MainActivity.this, videoStartTime);
+
+
         };
 
         mStartRecordRunnable = () -> {
@@ -416,35 +419,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         Toast.makeText(MainActivity.this, "recording ...", Toast.LENGTH_SHORT).show();
                         mBinding.btnCaptureVideo.setColorFilter(0x7fff0000);
                         System.out.println(videoStartTime + "starting video");
-                    }
 
+                        String textFilePath = copyTextToInternalStorage();
+                        File processedVideoFile = new File(videoFile.getParent(), "processed_video.mp4");
 
-                    @Override
-                    public void onVideoSaved(@NonNull VideoCapture.OutputFileResults outputFileResults) {
-                        Log.d(TAG, "onVideoSaved: Video saved");
-                        Toast.makeText(
-                                MainActivity.this,
-                                "Video saved at: " + videoUri.getPath(),
-                                Toast.LENGTH_SHORT).show();
-                        System.out.println("saved video");
-                        // Execute FFmpeg command to add time stamp overlay and fix "moov atom not found" issue
-                        String overlayImagePath = copyImageToInternalStorage();
-                        File processedVideoFile = new File(videoFile.getParent(), videoFile.getName().replace(".mp4", "_processed.mp4"));
-
-                        if (overlayImagePath != null) {
+                        if (textFilePath != null) {
                             String outputFilePath;
 
-                            if (videoFile.getAbsolutePath().equals(processedVideoFile.getAbsolutePath())) {
-                                // If both input and processed filenames are the same, add "_processed" to the output filename
-                                outputFilePath = new File(videoFile.getParent(), videoFile.getName().replace(".mp4", "_processed.mp4")).getAbsolutePath();
-                            } else {
-                                outputFilePath = processedVideoFile.getAbsolutePath();
-                            }
-
+                            // Overlay the custom text on the video using FFmpeg's drawtext filter
                             String[] ffmpegCmd = {
                                     "ffmpeg",
                                     "-i", videoFile.getAbsolutePath(),
-                                    "-i", overlayImagePath,
                                     "-filter_complex", "[0:v][1:v]overlay=x=" + OSD_POSITION_X + ":y=" + OSD_POSITION_Y,
                                     "-c:v", "libx265",
                                     "-c:a", "aac",
@@ -460,7 +445,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 // Execute the FFmpeg command to add the overlay image to the video
                                 int result = FFmpeg.execute(ffmpegCmd);
                                 if (result == RETURN_CODE_SUCCESS) {
-                                    Log.d(TAG, "Video saved with overlay: " + outputFilePath);
+                                    Log.d(TAG, "Video saved with overlay: " + processedVideoFile.getAbsolutePath());
                                     Toast.makeText(MainActivity.this, "Video saved with overlay", Toast.LENGTH_SHORT).show();
                                 } else {
                                     Log.e(TAG, "Failed to save video with overlay. FFmpeg error code: " + result);
@@ -477,6 +462,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         }
                     }
 
+
+                    @Override
+                    public void onVideoSaved(@NonNull VideoCapture.OutputFileResults outputFileResults) {
+                        Log.d(TAG, "onVideoSaved: Video saved");
+                        Toast.makeText(
+                                MainActivity.this,
+                                "Video saved at: " + videoUri.getPath(),
+                                Toast.LENGTH_SHORT).show();
+                        System.out.println("saved video");
+                        // Execute FFmpeg command to add time stamp overlay and fix "moov atom not found" issue
+
+                    }
+
                     @Override
                     public void onError(int videoCaptureError, @NonNull String message,
                                         @Nullable Throwable cause) {
@@ -489,24 +487,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
 
     }
-    private String copyImageToInternalStorage() {
-        String imageName = "images.jpg";
-        String imagePath = getFilesDir() + File.separator + imageName; // Destination path
+    private String copyTextToInternalStorage() {
+        String textContent = "This is a custom text overlay"; // Replace this with the desired text
+        String textFileName = "custom_text.txt";
+        String textFilePath = getFilesDir() + File.separator + textFileName;
 
         try {
-            InputStream inputStream = getResources().openRawResource(R.raw.images); // Replace 'images' with the actual resource name
-            FileOutputStream outputStream = new FileOutputStream(imagePath);
-
-            byte[] buffer = new byte[1024];
-            int read;
-            while ((read = inputStream.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, read);
-            }
-
-            inputStream.close();
+            FileOutputStream outputStream = new FileOutputStream(textFilePath);
+            outputStream.write(textContent.getBytes());
             outputStream.close();
-
-            return imagePath;
+            return textFilePath;
         } catch (IOException e) {
             e.printStackTrace();
             return null;
