@@ -98,7 +98,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private final Object mSync = new Object();
 
-    private String timeDuration = "";
     private boolean mIsCameraConnected = false;
     private ConcurrentLinkedQueue<UsbDevice> mReadyUsbDeviceList = new ConcurrentLinkedQueue<>();
     private ConditionVariable mReadyDeviceConditionVariable = new ConditionVariable();
@@ -110,7 +109,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Handler mHandler = new Handler();
     private Runnable mStopRecordRunnable;
     private Runnable mStartRecordRunnable;
-
+    private HandlerThread ffmpegThread;
+    private Handler ffmpegHandler;
+    private String timeDuration;
     private Handler recordingHandler = new Handler();
     private DeviceListDialogFragment mDeviceListDialog;
 
@@ -161,7 +162,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         initViews();
         InitializingRunnable();
         copyFFmpegBinaryToInternalStorage();
-
+        // Initialize FFmpeg thread and handler
+        ffmpegThread = new HandlerThread("FFmpegThread");
+        ffmpegThread.start();
+        ffmpegHandler = new Handler(ffmpegThread.getLooper());
 //        mHandlerThread = new HandlerThread(TAG);
 //        mHandlerThread.start();
 //        mAsyncHandler = new Handler(mHandlerThread.getLooper());
@@ -179,7 +183,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onDestroy();
 
         timerHandler.removeCallbacksAndMessages(null); // Stop the timer to avoid memory leaks
-
+        // Stop the FFmpeg thread
+        if (ffmpegThread != null) {
+            ffmpegThread.quitSafely();
+        }
     }
 
     @Override
@@ -407,17 +414,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 // Create the time duration string in the desired format
             String timeDuration = String.format("\\%02d\\:%02d\\:%02d\\", hours, minutes, seconds);
+            int frameRate = 15;
 
             String[] ffmpegCmd = {
                     "-i", videoFile.getAbsolutePath(), // Input video file path
                     "-vf", "drawtext=text='" + timeDuration + "':x=10:y=10:fontsize=36:fontcolor=white:box=1:boxcolor=black@0.5:fontfile='" + fontFilePath + "',format=yuv420p",
+                    "-r", String.valueOf(frameRate), // Set frame rate to 15 FPS
                     "-c:v", "libx265", // Video codec H.265 (HEVC)
-                    "-c:a", "aac",
+                    "-preset", "ultrafast", // Faster encoding preset
                     "-strict", "experimental",
                     "-y", processedVideoFile.getAbsolutePath() // Output processed video file path
             };
+
             try {
-                // Execute the FFmpeg commathisnd to add the overlay
+                // Execute the FFmpeg command to add the overlay
                 int result = FFmpeg.execute(ffmpegCmd);
                 if (result == RETURN_CODE_SUCCESS) {
                     // Video processing completed successfully
@@ -506,7 +516,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 Toast.LENGTH_SHORT).show();
                         System.out.println("saved video");
                         // Execute FFmpeg command to add time stamp overlay and fix "moov atom not found" issue
-                        addTextOverlayToVideo(outputFileResults.getSavedUri());
+                        ffmpegHandler.post(() -> addTextOverlayToVideo(outputFileResults.getSavedUri()));
 
 
                     }
