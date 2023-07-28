@@ -299,15 +299,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-
-    //    private void setCustomVideoCaptureConfig() {
-//        mCameraHelper.setVideoCaptureConfig(
-//                mCameraHelper.getVideoCaptureConfig()
-//                        .setAudioCaptureEnable(false)
-//                        .setBitRate((int) (1024 * 1024 * 25 * 0.25))
-//                        .setVideoFrameRate(25)
-//                        .setIFrameInterval(1));
-//    }
     private void closeAllDialogFragment() {
         if (mControlsDialog != null && mControlsDialog.isAdded()) {
             mControlsDialog.dismiss();
@@ -315,9 +306,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (mDeviceListDialog != null && mDeviceListDialog.isAdded()) {
             mDeviceListDialog.dismiss();
         }
-//        if (mFormatDialog != null && mFormatDialog.isAdded()) {
-//            mFormatDialog.dismiss();
-//        }
     }
 
     private void clearCameraHelper() {
@@ -380,74 +368,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         };
     }
-    private void addTextOverlayToVideo(Uri videoUri) {
-        String textFilePath = copyTextToInternalStorage();
-        if (textFilePath != null) {
-            File videoFile = new File(videoUri.getPath());
-            File processedVideoFile = new File(videoFile.getParent(), videoFile.getName().replace(".mp4", "_processed.mp4"));
 
-            // Replace "times.ttf" with the actual path to your font file if it's different
-            String fontFilePath = "/storage/emulated/0/Movies/times.ttf";
-
-            // Replace "This is a custom text overlay" with the desired custom text
-            String customText = "%{localtime\\:%d%m%Y %A %H-%M-%S}";
-// Get the duration of the recorded video
-// Calculate the duration in the format "ddmmyyyy day of the week hh:mm:ss"
-            long totalSeconds = remainingTime / 1000;
-            long seconds = totalSeconds % 60;
-            long totalMinutes = totalSeconds / 60;
-            long minutes = totalMinutes % 60;
-            long totalHours = totalMinutes / 60;
-            long hours = totalHours % 24;
-            long days = totalHours / 24;
-
-            // Get the current date and time
-            Calendar calendar = Calendar.getInstance();
-            int day = calendar.get(Calendar.DAY_OF_MONTH);
-            int month = calendar.get(Calendar.MONTH) + 1; // Add 1 to the month because it is 0-based
-            int year = calendar.get(Calendar.YEAR);
-
-// Get the day of the week
-            String[] daysOfWeek = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
-            int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
-            String dayOfWeekStr = daysOfWeek[dayOfWeek - 1];
-
-// Create the time duration string in the desired format
-            String timeDuration = String.format("\\%02d\\:%02d\\:%02d\\", hours, minutes, seconds);
-            int frameRate = 15;
-
-            String[] ffmpegCmd = {
-                    "-i", videoFile.getAbsolutePath(), // Input video file path
-                    "-vf", "drawtext=text='" + timeDuration + "':x=10:y=10:fontsize=36:fontcolor=white:box=1:boxcolor=black@0.5:fontfile='" + fontFilePath + "',format=yuv420p",
-                    "-r", String.valueOf(frameRate), // Set frame rate to 15 FPS
-                    "-c:v", "libx265", // Video codec H.265 (HEVC)
-                    "-preset", "ultrafast", // Faster encoding preset
-                    "-strict", "experimental",
-                    "-y", processedVideoFile.getAbsolutePath() // Output processed video file path
-            };
-
-            try {
-                // Execute the FFmpeg command to add the overlay
-                int result = FFmpeg.execute(ffmpegCmd);
-                if (result == RETURN_CODE_SUCCESS) {
-                    // Video processing completed successfully
-                    Log.d(TAG, "Video saved with overlay: " + processedVideoFile.getAbsolutePath());
-                    Toast.makeText(MainActivity.this, "Video saved with overlay", Toast.LENGTH_SHORT).show();
-                } else {
-                    // Video processing failed
-                    Log.e(TAG, "Failed to save video with overlay. FFmpeg error code: " + result);
-                    Toast.makeText(MainActivity.this, "Failed to save video with overlay", Toast.LENGTH_SHORT).show();
-                }
-            } catch (Exception e) {
-                // Handle the exception if the FFmpeg command encounters an error
-                e.printStackTrace();
-                Log.e(TAG, "Error executing FFmpeg command: " + e.getMessage());
-                Toast.makeText(MainActivity.this, "Error adding overlay: " + e.getMessage(), Toast.LENGTH_LONG).show();
-            }
-        } else {
-            Log.e(TAG, "Error with overlayImagePath: null");
-        }
-    }
 
     private void starting1MinRecording() {
         //Calculate the start time of the current video segment aligned to the nearest minute
@@ -516,8 +437,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 Toast.LENGTH_SHORT).show();
                         System.out.println("saved video");
                         // Execute FFmpeg command to add time stamp overlay and fix "moov atom not found" issue
-                        ffmpegHandler.post(() -> addTextOverlayToVideo(outputFileResults.getSavedUri()));
-
 
                     }
 

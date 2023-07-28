@@ -47,8 +47,8 @@ dependencies {
     //implementation 'org.bytedeco:ffmpeg-platform:4.5.1-1.5.6'
     //implementation 'org.bytedeco:javacv:1.5.6'
 
-    //implementation project(':libuvccam')
+    implementation project(':libuvccam')
 
-    implementation 'com.herohan:UVCAndroid:1.0.4'
+   // implementation 'com.herohan:UVCAndroid:1.0.4'
 
 }
