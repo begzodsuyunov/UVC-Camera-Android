@@ -1,9 +1,5 @@
 package com.example.javauvcproject;
 
-import static com.arthenica.mobileffmpeg.Config.RETURN_CODE_SUCCESS;
-
-import static java.lang.String.format;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -11,25 +7,19 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.usb.UsbDevice;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.ConditionVariable;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.View;
 import android.widget.Toast;
-
-import com.arthenica.mobileffmpeg.FFmpeg;
 import com.example.javauvcproject.databinding.ActivityMainBinding;
 import com.example.javauvcproject.supportingfragments.CameraControlsDialogFragment;
 import com.example.javauvcproject.supportingfragments.DeviceListDialogFragment;
@@ -46,9 +36,6 @@ import com.serenegiant.usb.UVCParam;
 import com.serenegiant.widget.AspectRatioSurfaceView;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -88,7 +75,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private int mPreviewRotation = 0;
 
     private ICameraHelper mCameraHelper;
-    private long remainingTime;
 
     private AspectRatioSurfaceView mCameraViewMain;
     private static final int REQUEST_CODE_WRITE_EXTERNAL_STORAGE = 102;
@@ -97,6 +83,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private VideoFormatDialogFragment mVideoFormatDialog;
 
     private final Object mSync = new Object();
+
 
     private boolean mIsCameraConnected = false;
     private ConcurrentLinkedQueue<UsbDevice> mReadyUsbDeviceList = new ConcurrentLinkedQueue<>();
@@ -109,21 +96,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Handler mHandler = new Handler();
     private Runnable mStopRecordRunnable;
     private Runnable mStartRecordRunnable;
-    private HandlerThread ffmpegThread;
-    private Handler ffmpegHandler;
-    private String timeDuration;
+
     private Handler recordingHandler = new Handler();
     private DeviceListDialogFragment mDeviceListDialog;
-
-    private static final String FONT_FILE_PATH = "android.resource://com.example.javauvcproject/" + R.font.times;
-    private static final String OVERLAY_IMAGE_PATH = "file:android.resource://com.example.javauvcproject/drawable/images.jpg";
-
-    private static final int OSD_FONT_SIZE = 36;
-    private static final int OSD_POSITION_X = 10;
-    private static final int OSD_POSITION_Y = 10;
-    private static final String OSD_FONT_COLOR = "white";
-    private static final String OSD_BOX_COLOR = "black@0.5";
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -161,11 +136,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setTitle(R.string.entry_custom_preview);
         initViews();
         InitializingRunnable();
-        copyFFmpegBinaryToInternalStorage();
-        // Initialize FFmpeg thread and handler
-        ffmpegThread = new HandlerThread("FFmpegThread");
-        ffmpegThread.start();
-        ffmpegHandler = new Handler(ffmpegThread.getLooper());
 //        mHandlerThread = new HandlerThread(TAG);
 //        mHandlerThread.start();
 //        mAsyncHandler = new Handler(mHandlerThread.getLooper());
@@ -183,10 +153,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onDestroy();
 
         timerHandler.removeCallbacksAndMessages(null); // Stop the timer to avoid memory leaks
-        // Stop the FFmpeg thread
-        if (ffmpegThread != null) {
-            ffmpegThread.quitSafely();
-        }
+
     }
 
     @Override
@@ -347,9 +314,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             if (mCameraHelper != null && mIsCameraConnected) {
                 mCameraHelper.closeCamera();
             }
-        } else if (v.getId() == R.id.btnCaptureVideo) {
-            recordingHandler.removeCallbacksAndMessages(mStartRecordRunnable);
-            recordingHandler.removeCallbacksAndMessages(mStopRecordRunnable);
+        } else 
+            if (v.getId() == R.id.btnCaptureVideo) {
+                recordingHandler.removeCallbacksAndMessages(mStartRecordRunnable);
+                recordingHandler.removeCallbacksAndMessages(mStopRecordRunnable);
 
             if (mCameraHelper != null) {
                 if (mCameraHelper.isRecording()) {
@@ -367,11 +335,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void InitializingRunnable() {
         mStopRecordRunnable = () -> {
             stopRecord();
-            recordingHandler.postDelayed(mStartRecordRunnable, 300L);
-            //File videoFile = SaveHelper.getSaveVideoFile(MainActivity.this, videoStartTime);
-            File videoFile = SaveHelper.getSaveVideoFile(MainActivity.this, videoStartTime);
-            String currentDate = new SimpleDateFormat("yyyy_MM_dd", Locale.getDefault()).format(new Date());
-
+            recordingHandler.postDelayed(mStartRecordRunnable, 700L);
         };
 
         mStartRecordRunnable = () -> {
@@ -379,74 +343,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             recordingHandler.postDelayed(mStopRecordRunnable, 60_000 - 300L);
 
         };
-    }
-    private void addTextOverlayToVideo(Uri videoUri) {
-        String textFilePath = copyTextToInternalStorage();
-        if (textFilePath != null) {
-            File videoFile = new File(videoUri.getPath());
-            File processedVideoFile = new File(videoFile.getParent(), videoFile.getName().replace(".mp4", "_processed.mp4"));
-
-            // Replace "times.ttf" with the actual path to your font file if it's different
-            String fontFilePath = "/storage/emulated/0/Movies/times.ttf";
-
-            // Replace "This is a custom text overlay" with the desired custom text
-            String customText = "%{localtime\\:%d%m%Y %A %H-%M-%S}";
-// Get the duration of the recorded video
-// Calculate the duration in the format "ddmmyyyy day of the week hh:mm:ss"
-            long totalSeconds = remainingTime / 1000;
-            long seconds = totalSeconds % 60;
-            long totalMinutes = totalSeconds / 60;
-            long minutes = totalMinutes % 60;
-            long totalHours = totalMinutes / 60;
-            long hours = totalHours % 24;
-            long days = totalHours / 24;
-
-            // Get the current date and time
-            Calendar calendar = Calendar.getInstance();
-            int day = calendar.get(Calendar.DAY_OF_MONTH);
-            int month = calendar.get(Calendar.MONTH) + 1; // Add 1 to the month because it is 0-based
-            int year = calendar.get(Calendar.YEAR);
-
-// Get the day of the week
-            String[] daysOfWeek = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
-            int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
-            String dayOfWeekStr = daysOfWeek[dayOfWeek - 1];
-
-// Create the time duration string in the desired format
-            String timeDuration = String.format("\\%02d\\:%02d\\:%02d\\", hours, minutes, seconds);
-            int frameRate = 15;
-
-            String[] ffmpegCmd = {
-                    "-i", videoFile.getAbsolutePath(), // Input video file path
-                    "-vf", "drawtext=text='" + timeDuration + "':x=10:y=10:fontsize=36:fontcolor=white:box=1:boxcolor=black@0.5:fontfile='" + fontFilePath + "',format=yuv420p",
-                    "-r", String.valueOf(frameRate), // Set frame rate to 15 FPS
-                    "-c:v", "libx265", // Video codec H.265 (HEVC)
-                    "-preset", "ultrafast", // Faster encoding preset
-                    "-strict", "experimental",
-                    "-y", processedVideoFile.getAbsolutePath() // Output processed video file path
-            };
-
-            try {
-                // Execute the FFmpeg command to add the overlay
-                int result = FFmpeg.execute(ffmpegCmd);
-                if (result == RETURN_CODE_SUCCESS) {
-                    // Video processing completed successfully
-                    Log.d(TAG, "Video saved with overlay: " + processedVideoFile.getAbsolutePath());
-                    Toast.makeText(MainActivity.this, "Video saved with overlay", Toast.LENGTH_SHORT).show();
-                } else {
-                    // Video processing failed
-                    Log.e(TAG, "Failed to save video with overlay. FFmpeg error code: " + result);
-                    Toast.makeText(MainActivity.this, "Failed to save video with overlay", Toast.LENGTH_SHORT).show();
-                }
-            } catch (Exception e) {
-                // Handle the exception if the FFmpeg command encounters an error
-                e.printStackTrace();
-                Log.e(TAG, "Error executing FFmpeg command: " + e.getMessage());
-                Toast.makeText(MainActivity.this, "Error adding overlay: " + e.getMessage(), Toast.LENGTH_LONG).show();
-            }
-        } else {
-            Log.e(TAG, "Error with overlayImagePath: null");
-        }
     }
 
     private void starting1MinRecording() {
@@ -473,6 +369,88 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             long currentTime = System.currentTimeMillis();
             videoStartTime = (currentTime / VIDEO_DURATION) * VIDEO_DURATION;
 
+            // Calculate the remaining time to the next minute
+//            long remainingTime = videoStartTime + VIDEO_DURATION - currentTime;
+//
+//            // Start the timer to automatically stop recording after the remaining time
+//            videoTimer = new Timer();
+//            videoTimer.schedule(new TimerTask() {
+//                @Override
+//                public void run() {
+//                    runOnUiThread(() -> stopRecord());
+//                }
+//            }, remainingTime);
+//
+//            // Create a new timer to schedule the next recording after 1 minute
+//            Timer nextVideoTimer = new Timer();
+//            nextVideoTimer.schedule(new TimerTask() {
+//                @Override
+//                public void run() {
+//                    runOnUiThread(() -> startRecord());
+//                }
+//            }, VIDEO_DURATION);
+
+            // Start the video recording on the recordingHandler
+//            recordingHandler.post(() -> {
+//                File videoFile = SaveHelper.getSaveVideoFile(MainActivity.this, videoStartTime);
+//                File videoDir = videoFile.getParentFile(); // Get the parent directory
+//
+//                Uri videoUri = SaveHelper.getSaveVideoUri(MainActivity.this, videoStartTime);
+//                VideoCapture.OutputFileOptions options = new VideoCapture.OutputFileOptions.Builder(videoFile).build();
+//
+//                if (videoDir != null && !videoDir.exists()) {
+//                    boolean created = videoDir.mkdirs(); // Create the parent directory if it doesn't exist
+//                    if (!created) {
+//                        Log.e(TAG, "Failed to create video directory");
+//                        return;
+//                    }
+//                }
+////                mHandler.post(() -> {
+////                    // Update the UI elements here
+////                    updateTimerUI();
+////                });
+//                mCameraHelper.startRecording(options, new VideoCapture.OnVideoCaptureCallback() {
+//                    @Override
+//                    public void onStart() {
+//                        Log.d(TAG, "onStart: Recording started callback");
+//                        Toast.makeText(MainActivity.this, "recording ...", Toast.LENGTH_SHORT).show();
+//
+//
+//                    }
+//
+//                    @Override
+//                    public void onVideoSaved(@NonNull VideoCapture.OutputFileResults outputFileResults) {
+//                        Log.d(TAG, "onVideoSaved: Video saved");
+//                        Toast.makeText(
+//                                MainActivity.this,
+//                                "Video saved at: " + videoUri.getPath(),
+//                                Toast.LENGTH_SHORT).show();
+////                        // Release recording resources before starting a new recording
+////                        if (recordingHandler != null) {
+////                            recordingHandler.removeCallbacksAndMessages(null);
+////                            recordingHandler.getLooper().quitSafely();
+////                            recordingHandler = null;
+////                        }
+////
+////                        // Set isRecording to false since the recording is stopped
+////                        isRecording = false;
+////
+////                        // Start a new recording after a brief delay (optional)
+////                        mHandler.postDelayed(() -> startRecord(), 500);
+////                        //mHandler.post(() -> startRecord());
+//
+//                    }
+//
+//                    @Override
+//                    public void onError(int videoCaptureError, @NonNull String message, @Nullable Throwable cause) {
+//                        Log.e(TAG, "onError: Video recording error: " + message, cause);
+//                        Toast.makeText(MainActivity.this, "Video recording error: " + message, Toast.LENGTH_LONG).show();
+//
+//                    }
+//                });
+//                mBinding.btnCaptureVideo.setColorFilter(0x7fff0000);
+////                isRecording = true;
+//            });
 
             recordingHandler.post(() -> {
                 File videoFile = SaveHelper.getSaveVideoFile(MainActivity.this, videoStartTime);
@@ -488,24 +466,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         return;
                     }
                 }
-                //mCameraHelper.stopRecording();
-
-// Save the recorded video file with the overlay permanently using FFmpeg
-
 
                 mCameraHelper.startRecording(options, new VideoCapture.OnVideoCaptureCallback() {
                     @Override
                     public void onStart() {
-                        Log.d(TAG, "onStart: Recording started callback" + videoStartTime);
+                        Log.d(TAG, "onStart: Recording started callback" + videoStartTime );
                         Toast.makeText(MainActivity.this, "recording ...", Toast.LENGTH_SHORT).show();
                         mBinding.btnCaptureVideo.setColorFilter(0x7fff0000);
                         System.out.println(videoStartTime + "starting video");
 
-                        long currentTime = System.currentTimeMillis();
-                        long elapsedTime = currentTime - videoStartTime;
-                        remainingTime = VIDEO_DURATION - elapsedTime;
-                    }
 
+                    }
 
                     @Override
                     public void onVideoSaved(@NonNull VideoCapture.OutputFileResults outputFileResults) {
@@ -515,95 +486,51 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                                 "Video saved at: " + videoUri.getPath(),
                                 Toast.LENGTH_SHORT).show();
                         System.out.println("saved video");
-                        // Execute FFmpeg command to add time stamp overlay and fix "moov atom not found" issue
-                        ffmpegHandler.post(() -> addTextOverlayToVideo(outputFileResults.getSavedUri()));
 
+//
 
                     }
 
                     @Override
-                    public void onError(int videoCaptureError, @NonNull String message,
-                                        @Nullable Throwable cause) {
+                    public void onError(int videoCaptureError, @NonNull String message, @Nullable Throwable cause) {
                         Log.e(TAG, "onError: Video recording error: " + message, cause);
                         Toast.makeText(MainActivity.this, "Video recording error: " + message, Toast.LENGTH_LONG).show();
 
                     }
                 });
+//                isRecording = true;
             });
         }
-
     }
-    private String copyTextToInternalStorage() {
-        String textContent = "This is a custom text overlay"; // Replace this with the desired text
-        String textFileName = "custom_text.txt";
-        String textFilePath = getFilesDir() + File.separator + textFileName;
 
-        try {
-            FileOutputStream outputStream = new FileOutputStream(textFilePath);
-            outputStream.write(textContent.getBytes());
-            outputStream.close();
-            return textFilePath;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
     private void stopRecord() {
         if (mCameraHelper != null && mCameraHelper.isRecording()) {
             // Stop recording
             mCameraHelper.stopRecording();
 
-            File videoFile = SaveHelper.getSaveVideoFile(MainActivity.this, videoStartTime);
-            File videoDir = videoFile.getParentFile(); // Get the parent directory
-            Uri videoUri = SaveHelper.getSaveVideoUri(MainActivity.this, videoStartTime);
+            // Cancel the timer as the video is manually stopped
+//            videoTimer.cancel();
+            // Cancel the timer as the video is manually stopped
+//            timerHandler.removeCallbacks(timerRunnable);
 
-//            if (videoDir != null && !videoDir.exists()) {
-//                boolean created = videoDir.mkdirs(); // Create the parent directory if it doesn't exist
-//                if (!created) {
-//                    Log.e(TAG, "Failed to create video directory");
-//                    return;
-//                }
-//            }
-
-
-
+// Release recording resources
 
             mBinding.btnCaptureVideo.setColorFilter(0x00000000);
 //            isRecording = false;
+            Toast.makeText(this, "asdfasdf", Toast.LENGTH_SHORT).show();
             Calendar calendarSec = Calendar.getInstance();
 
             // Calculate the remaining time to the next minute
             long calendarSecond = calendarSec.get(Calendar.SECOND);
             long calendarMili = calendarSec.get(Calendar.MILLISECOND);
             long delay = (60 - calendarSecond) * 1000;
+            System.out.println(calendarMili + "stopping milli");
 
-            System.out.println(calendarSecond + "stopping");
+            System.out.println(calendarSecond + "stopping second");
 
         }
     }
-    private void copyFFmpegBinaryToInternalStorage() {
-        String ffmpegBinaryPath = getDir("ffmpeg", Context.MODE_PRIVATE) + File.separator + "ffmpeg";
 
-        try {
-            InputStream inputStream = getResources().openRawResource(R.raw.ffmpeg); // Assuming the binary file in res/raw is named "ffmpeg"
-            File ffmpegFile = new File(ffmpegBinaryPath);
-
-            FileOutputStream outputStream = new FileOutputStream(ffmpegFile);
-            byte[] buffer = new byte[1024];
-            int read;
-            while ((read = inputStream.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, read);
-            }
-
-            inputStream.close();
-            outputStream.close();
-
-            // Set executable permission on the copied FFmpeg binary
-            ffmpegFile.setExecutable(true);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 
     private void updateTimerUI() {
         long currentTime = System.currentTimeMillis();
@@ -627,8 +554,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         long remainingHours = remainingMinutes / 60;
 
         // Format the time strings to display in the TextView
-        String formattedElapsedTime = format(Locale.getDefault(), "%02d:%02d:%02d", elapsedHours, elapsedMinutes % 60, elapsedSeconds % 60);
-        String formattedRemainingTime = format(Locale.getDefault(), "%02d:%02d:%02d", remainingHours, remainingMinutes % 60, remainingSeconds % 60);
+        String formattedElapsedTime = String.format(Locale.getDefault(), "%02d:%02d:%02d", elapsedHours, elapsedMinutes % 60, elapsedSeconds % 60);
+        String formattedRemainingTime = String.format(Locale.getDefault(), "%02d:%02d:%02d", remainingHours, remainingMinutes % 60, remainingSeconds % 60);
 
         // Update the TextView with the formatted time strings
         mBinding.tvVideoCurrentTime.setText(formattedElapsedTime);
