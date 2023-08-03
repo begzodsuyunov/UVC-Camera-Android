@@ -67,6 +67,7 @@ final class CameraInternal implements ICameraInternal {
 
             @Override
             public void onFrameAvailable() {
+                mRendererHolder.drawOSDOnPreview();
 
             }
 

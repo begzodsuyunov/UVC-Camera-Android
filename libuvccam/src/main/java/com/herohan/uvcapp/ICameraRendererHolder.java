@@ -9,6 +9,7 @@ interface ICameraRendererHolder extends IRendererHolder {
      * blocking for capture to complete
      */
     void captureImage(OnImageCapturedCallback callback);
+    void drawOSDOnPreview();
 
     interface OnImageCapturedCallback{
         void onCaptureSuccess(ImageRawData image);

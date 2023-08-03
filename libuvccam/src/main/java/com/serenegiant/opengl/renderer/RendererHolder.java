@@ -68,7 +68,7 @@ public class RendererHolder extends EGLTask implements IRendererHolder {
     private GLDrawer2D mDrawer;
 
     private SurfaceTexture mPrimaryTexture;
-    private Surface mPrimarySurface;
+    protected Surface mPrimarySurface;
 
     private final Lock mLock = new ReentrantLock();
     private final Condition mCreatePrimarySurfaceCondition = mLock.newCondition();
