@@ -136,6 +136,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setTitle(R.string.entry_custom_preview);
         initViews();
         InitializingRunnable();
+
 //        mHandlerThread = new HandlerThread(TAG);
 //        mHandlerThread.start();
 //        mAsyncHandler = new Handler(mHandlerThread.getLooper());
@@ -323,6 +324,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if (mCameraHelper.isRecording()) {
                     // Stop recording when the button is clicked again
                     stopRecord();
+                    recordingHandler.removeCallbacks(mStartRecordRunnable);
+                    recordingHandler.removeCallbacks(mStopRecordRunnable);
                 } else {
                     // Start recording
                     starting1MinRecording();

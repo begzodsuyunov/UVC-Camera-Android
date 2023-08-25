@@ -96,7 +96,7 @@ public class VideoCapture {
     /**
      * Android preferred mime type for AVC video.
      */
-    private static final String VIDEO_MIME_TYPE = "video/hevc";
+    private static final String VIDEO_MIME_TYPE = "video/avc";
     private static final String AUDIO_MIME_TYPE = "audio/mp4a-latm";
 
     private final MediaCodec.BufferInfo mVideoBufferInfo = new MediaCodec.BufferInfo();

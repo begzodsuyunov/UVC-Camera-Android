@@ -24,7 +24,7 @@
 
 #ifndef UVCPREVIEW_H_
 #define UVCPREVIEW_H_
-
+#include <opencv2/opencv.hpp>
 #include "libUVCCamera.h"
 #include <pthread.h>
 #include <android/native_window.h>
@@ -106,6 +106,8 @@ private:
 	void do_preview(uvc_stream_ctrl_t *ctrl);
 	uvc_frame_t *draw_preview_one(uvc_frame_t *frame, ANativeWindow **window, convFunc_t func, int pixelBytes);
 //
+
+	void add_overlay_text(uvc_frame_t *frame, const std::string& text);
 	void addCaptureFrame(uvc_frame_t *frame);
 	uvc_frame_t *waitCaptureFrame();
 	void clearCaptureFrame();

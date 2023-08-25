@@ -1,19 +1,4 @@
-pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-        maven { url 'https://jitpack.io' }
-
-    }
-}
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-rootProject.name = "JavaUVCProject"
 include ':app'
 include ':libuvccam'
+include ':opencv'
+project(':opencv').projectDir = new File(opencvsdk + '/sdk')

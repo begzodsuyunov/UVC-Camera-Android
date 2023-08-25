@@ -25,6 +25,8 @@
 #include <stdlib.h>
 #include <linux/time.h>
 #include <unistd.h>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/opencv.hpp>
 
 #ifndef LOG_NDEBUG
 #define  LOCAL_DEBUG 1
@@ -419,28 +421,33 @@ int UVCPreview::stopPreview() {
 //**********************************************************************
 //
 //**********************************************************************
+void UVCPreview::add_overlay_text(uvc_frame_t *frame, const std::string& text) {
+    // Convert the uvc_frame_t data to a cv::Mat
+    cv::Mat cvFrame(frame->height, frame->width, CV_8UC2, frame->data);
+
+    // Define the font and text properties
+    int fontFace = cv::FONT_HERSHEY_SIMPLEX;
+    double fontScale = 1.0;
+    cv::Scalar textColor(255, 255, 255); // White color (BGR format)
+    int thickness = 2; // Thickness of the text
+
+    // Calculate the position for the text (you can customize this)
+    cv::Point textPosition(10, 30); // Example position (x, y)
+
+    // Add the overlay text to the frame
+    cv::putText(cvFrame, text, textPosition, fontFace, fontScale, textColor, thickness);
+}
 void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args) {
     UVCPreview *preview = reinterpret_cast<UVCPreview *>(vptr_args);
     if UNLIKELY(!preview->isRunning() || !frame || !frame->frame_format || !frame->data ||
                 !frame->data_bytes)
         return;
-//    if (UNLIKELY(
-//            ((frame->frame_format != UVC_FRAME_FORMAT_MJPEG)
-//             && (frame->data_bytes < preview->frameBytes))
-//            || (frame->width != preview->frameWidth) || (frame->height != preview->frameHeight))) {
-//
-//#if LOCAL_DEBUG
-//        LOGD("broken frame!:format=%d,actual_bytes=%d/%d(%d,%d/%d,%d)",
-//             frame->frame_format, frame->data_bytes, preview->frameBytes,
-//             frame->width, frame->height, preview->frameWidth, preview->frameHeight);
-//#endif
-//        return;
-//    }
+
     if (LIKELY(preview->isRunning())) {
         uvc_frame_t *copy = preview->get_frame(frame->data_bytes);
         if (UNLIKELY(!copy)) {
 #if LOCAL_DEBUG
-            LOGE("uvc_callback:unable to allocate duplicate frame!");
+            LOGE("uvc_callback: unable to allocate duplicate frame!");
 #endif
             return;
         }
@@ -449,6 +456,11 @@ void UVCPreview::uvc_preview_frame_callback(uvc_frame_t *frame, void *vptr_args)
             preview->recycle_frame(copy);
             return;
         }
+
+        // Add overlay text to the frame
+        std::string overlayText = "Your Overlay Text Here"; // Customize this text
+//        preview->add_overlay_text(copy, overlayText);
+
         preview->addPreviewFrame(copy);
     }
 }
@@ -570,10 +582,24 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
             // MJPEG mode
             for (; LIKELY(isRunning());) {
                 frame_mjpeg = waitPreviewFrame();
+
+
                 if (LIKELY(frame_mjpeg)) {
                     frame = get_frame(frame_mjpeg->width * frame_mjpeg->height * 2);
 //                    c_start = clock();
                     result = uvc_mjpeg2yuyv(frame_mjpeg, frame);   // MJPEG => yuyv
+                    auto currentTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+
+                    std::stringstream timeStringStream;
+                    timeStringStream << std::put_time(std::localtime(&currentTime), "%Y-%m-%d %H:%M:%S");
+                    std::string timeString = timeStringStream.str();
+
+                    cv::Mat frameMat(frame->height, frame->width, CV_8UC2, frame->data);
+                    cv::Point textPoint(25, 50); // Customize the position
+                    cv::Scalar textColor(255, 128, 128); // Y=255, U=128, V=128
+                    int textSize = 1; // Customize text size
+                    cv::putText(frameMat, timeString, textPoint, cv::FONT_HERSHEY_SIMPLEX, textSize, textColor, 2);
+
 //                    c_end = clock();
 //                    LOGI("uvc_mjpeg2yuyv time: %f", (double) (c_end - c_start) / CLOCKS_PER_SEC);
                     recycle_frame(frame_mjpeg);
@@ -593,10 +619,23 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
             // yuvyv mode
             for (; LIKELY(isRunning());) {
                 frame = waitPreviewFrame();
+                auto currentTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+
+                std::stringstream timeStringStream;
+                timeStringStream << std::put_time(std::localtime(&currentTime), "%Y-%m-%d %H:%M:%S");
+                std::string timeString = timeStringStream.str();
+
+                cv::Mat frameMat(frame->height, frame->width, CV_8UC2, frame->data);
+                cv::Point textPoint(25, 50); // Customize the position
+                cv::Scalar textColor(255, 128, 128); // Y=255, U=128, V=128
+                int textSize = 1; // Customize text size
+                cv::putText(frameMat, timeString, textPoint, cv::FONT_HERSHEY_SIMPLEX, textSize, textColor, 2);
+
                 if (LIKELY(frame)) {
 //                    c_start = clock();
                     frame = draw_preview_one(frame, &mPreviewWindow, uvc_any2rgbx,
                                              PREVIEW_PIXEL_BYTES);
+
 //                    c_end = clock();
 //                    LOGI("uvc_any2rgbx time: %f", (double) (c_end - c_start) / CLOCKS_PER_SEC);
                     addCaptureFrame(frame);

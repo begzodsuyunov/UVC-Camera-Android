@@ -62,4 +62,5 @@
         <item name="android:background">#00000000</item>
         <item name="android:textColor">@color/DEEPPINK</item>
     </style>
+
 </resources>
