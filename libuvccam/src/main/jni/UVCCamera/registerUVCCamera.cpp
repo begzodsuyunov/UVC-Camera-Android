@@ -233,17 +233,17 @@ static jint nativeSetPreviewSize(JNIEnv *env, jobject thiz,
     }
     RETURN(JNI_ERR, jint);
 }
-
-static jint nativeStartPreview(JNIEnv *env, jobject thiz,
-                               ID_TYPE id_camera) {
-
-    ENTER();
-    UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
-    if (LIKELY(camera)) {
-        return camera->startPreview();
-    }
-    RETURN(JNI_ERR, jint);
-}
+//
+//static jint nativeStartPreview(JNIEnv *env, jobject thiz,
+//                               ID_TYPE id_camera) {
+//
+//    ENTER();
+//    UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+//    if (LIKELY(camera)) {
+//        return camera->startPreview();
+//    }
+//    RETURN(JNI_ERR, jint);
+//}
 
 // プレビューを停止
 static jint nativeStopPreview(JNIEnv *env, jobject thiz,
@@ -330,7 +330,7 @@ static JNINativeMethod methods[] = {
 
         {"nativeGetSupportedFormats", "(J)Ljava/lang/String;",                     (void *) nativeGetSupportedFormats},
         {"nativeSetPreviewSize",      "(JIIII)I",                                  (void *) nativeSetPreviewSize},
-        {"nativeStartPreview",        "(J)I",                                      (void *) nativeStartPreview},
+//        {"nativeStartPreview",        "(J)I",                                      (void *) nativeStartPreview},
         {"nativeStopPreview",         "(J)I",                                      (void *) nativeStopPreview},
         {"nativeSetPreviewDisplay",   "(JLandroid/view/Surface;)I",                (void *) nativeSetPreviewDisplay},
         {"nativeSetFrameCallback",    "(JLcom/serenegiant/usb/IFrameCallback;I)I", (void *) nativeSetFrameCallback},
@@ -346,4 +346,25 @@ int register_uvccamera(JNIEnv *env) {
         return -1;
     }
     return 0;
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_serenegiant_usb_UVCCamera_nativeStartPreview(JNIEnv *env, jobject thiz, jlong id_camera,
+                                                      jstring camera_name) {
+    const char* camera_name_str = env->GetStringUTFChars(camera_name, nullptr);
+
+    std::string camera_name_stdstr(camera_name_str);
+    env->ReleaseStringUTFChars(camera_name, camera_name_str);
+    const char* camera_name_cstr = camera_name_stdstr.c_str();
+
+    LOGE("cameraname=%s", camera_name_cstr);
+    // Now, you can use camera_name_stdstr as a C++ std::string.
+
+    ENTER();
+    UVCCamera *camera = reinterpret_cast<UVCCamera *>(id_camera);
+    if (LIKELY(camera)) {
+        return camera->startPreview(camera_name_cstr);
+    }
+    RETURN(JNI_ERR, jint);
 }

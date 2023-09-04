@@ -193,12 +193,12 @@ int UVCCamera::setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pix
     RETURN(result, int);
 }
 
-int UVCCamera::startPreview() {
+int UVCCamera::startPreview(const char* camera_name) {
     ENTER();
 
     int result = EXIT_FAILURE;
     if (mDeviceHandle) {
-        return mPreview->startPreview();
+        return mPreview->startPreview(camera_name);
     }
     RETURN(result, int);
 }

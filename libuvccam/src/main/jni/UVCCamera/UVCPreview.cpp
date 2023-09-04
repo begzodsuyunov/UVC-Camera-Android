@@ -41,6 +41,7 @@
 // RGB_565:2
 #define PREVIEW_PIXEL_BYTES 4
 #define FRAME_POOL_SZ MAX_FRAME + 2
+std::string mCameraName;  // Add a member variable to store the camera name
 
 UVCPreview::UVCPreview(uvc_device_handle_t *devh)
         : mPreviewWindow(NULL),
@@ -359,12 +360,15 @@ void UVCPreview::clearDisplay() {
     EXIT();
 }
 
-int UVCPreview::startPreview() {
+int UVCPreview::startPreview(const char* camera_name) {
     ENTER();
+
+    LOGE("cam=%s", camera_name);
 
     int result = EXIT_FAILURE;
     if (!isRunning()) {
         mIsRunning = true;
+        mCameraName = camera_name;
         pthread_mutex_lock(&preview_mutex);
         {
             if (LIKELY(mPreviewWindow)) {
@@ -582,6 +586,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
             // MJPEG mode
             for (; LIKELY(isRunning());) {
                 frame_mjpeg = waitPreviewFrame();
+                LOGE("Doing preview for camera: %s", mCameraName.c_str());
 
 
                 if (LIKELY(frame_mjpeg)) {
@@ -594,11 +599,18 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
                     timeStringStream << std::put_time(std::localtime(&currentTime), "%Y-%m-%d %H:%M:%S");
                     std::string timeString = timeStringStream.str();
 
+
                     cv::Mat frameMat(frame->height, frame->width, CV_8UC2, frame->data);
                     cv::Point textPoint(25, 50); // Customize the position
                     cv::Scalar textColor(255, 128, 128); // Y=255, U=128, V=128
                     int textSize = 1; // Customize text size
                     cv::putText(frameMat, timeString, textPoint, cv::FONT_HERSHEY_SIMPLEX, textSize, textColor, 2);
+                    cv::Point otherTextPoint(25, 100); // Customize the position for the additional text
+
+                    // Add additional text next to the time text
+                    std::string additionalText = mCameraName.c_str();
+                    cv::putText(frameMat, additionalText, otherTextPoint, cv::FONT_HERSHEY_SIMPLEX, textSize, textColor, 2);
+
 
 //                    c_end = clock();
 //                    LOGI("uvc_mjpeg2yuyv time: %f", (double) (c_end - c_start) / CLOCKS_PER_SEC);

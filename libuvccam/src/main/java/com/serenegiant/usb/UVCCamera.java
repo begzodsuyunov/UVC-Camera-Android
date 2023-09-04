@@ -223,7 +223,7 @@ public class UVCCamera {
     }
 
     public String getDeviceName() {
-        return mCtrlBlock != null ? mCtrlBlock.getDeviceName() : null;
+        return mCtrlBlock != null ? mCtrlBlock.getProductName() : null;
     }
 
     public UsbControlBlock getUsbControlBlock() {
@@ -518,7 +518,7 @@ public class UVCCamera {
      */
     public synchronized void startPreview() {
         if (mCtrlBlock != null) {
-            nativeStartPreview(mNativePtr);
+            nativeStartPreview(mNativePtr, getDeviceName());
         }
     }
 
@@ -601,7 +601,7 @@ public class UVCCamera {
 
     private native String nativeGetSupportedFormats(final long id_camera);
 
-    private native int nativeStartPreview(final long id_camera);
+    private native int nativeStartPreview(final long id_camera, String camera_name);
 
     private native int nativeStopPreview(final long id_camera);
 

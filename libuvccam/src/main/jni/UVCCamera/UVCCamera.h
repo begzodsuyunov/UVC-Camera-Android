@@ -68,7 +68,7 @@ public:
 
     int setFrameCallback(JNIEnv *env, jobject frame_callback_obj, int pixel_format);
 
-    int startPreview();
+    int startPreview(const char* camera_name);
 
     int stopPreview();
 
