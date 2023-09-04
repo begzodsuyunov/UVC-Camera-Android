@@ -601,15 +601,17 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
 
 
                     cv::Mat frameMat(frame->height, frame->width, CV_8UC2, frame->data);
-                    cv::Point textPoint(25, 50); // Customize the position
+                    cv::Point textPoint(frameWidth * 0.01, frameHeight * 0.06); // Customize the position
+                    cv::Point otherTextPoint(frameWidth * 0.01, frameHeight * 0.1); // Customize the position for the additional text
+                    int thickness = std::ceil(std::min(frame->width, frame->height) * (2e-3));
+
                     cv::Scalar textColor(255, 128, 128); // Y=255, U=128, V=128
-                    int textSize = 1; // Customize text size
-                    cv::putText(frameMat, timeString, textPoint, cv::FONT_HERSHEY_SIMPLEX, textSize, textColor, 2);
-                    cv::Point otherTextPoint(25, 100); // Customize the position for the additional text
+                    double textSize = std::min(frame->width, frame->height) * (2e-3) * 0.7; // Customize text size
+                    cv::putText(frameMat, timeString, textPoint, cv::FONT_HERSHEY_SIMPLEX, textSize, textColor, thickness,cv::LINE_AA);
 
                     // Add additional text next to the time text
                     std::string additionalText = mCameraName.c_str();
-                    cv::putText(frameMat, additionalText, otherTextPoint, cv::FONT_HERSHEY_SIMPLEX, textSize, textColor, 2);
+                    cv::putText(frameMat, additionalText, otherTextPoint, cv::FONT_HERSHEY_SIMPLEX, textSize, textColor, thickness,cv::LINE_AA);
 
 
 //                    c_end = clock();
