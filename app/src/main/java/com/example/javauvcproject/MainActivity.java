@@ -254,6 +254,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         // Update the preview size
         mPreviewWidth = size.width;
         mPreviewHeight = size.height;
+
         // Set the aspect ratio of SurfaceView to match the aspect ratio of the camera
         mBinding.svCameraViewMain.setAspectRatio(mPreviewWidth, mPreviewHeight);
     }
@@ -371,6 +372,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             // Calculate the start time of the current video segment aligned to the nearest minute
             long currentTime = System.currentTimeMillis();
             videoStartTime = (currentTime / VIDEO_DURATION) * VIDEO_DURATION;
+            System.out.println("previewsize" + mCameraHelper.getPreviewSize());
 
             // Calculate the remaining time to the next minute
 //            long remainingTime = videoStartTime + VIDEO_DURATION - currentTime;
@@ -649,6 +651,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mCameraHelper.addSurface(mBinding.svCameraViewMain.getHolder().getSurface(), false);
                 mIsCameraConnected = true;
             }
+
             invalidateOptionsMenu();
 
 

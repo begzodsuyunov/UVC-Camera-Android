@@ -363,7 +363,7 @@ void UVCPreview::clearDisplay() {
 int UVCPreview::startPreview(const char* camera_name) {
     ENTER();
 
-    LOGE("cam=%s", camera_name);
+    //LOGE("cam=%s", camera_name);
 
     int result = EXIT_FAILURE;
     if (!isRunning()) {
@@ -586,7 +586,7 @@ void UVCPreview::do_preview(uvc_stream_ctrl_t *ctrl) {
             // MJPEG mode
             for (; LIKELY(isRunning());) {
                 frame_mjpeg = waitPreviewFrame();
-                LOGE("Doing preview for camera: %s", mCameraName.c_str());
+                //LOGE("Doing preview for camera: %s", mCameraName.c_str());
 
 
                 if (LIKELY(frame_mjpeg)) {
