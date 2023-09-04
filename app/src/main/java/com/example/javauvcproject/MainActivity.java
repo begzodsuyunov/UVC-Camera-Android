@@ -174,6 +174,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void surfaceCreated(@NonNull SurfaceHolder holder) {
                 if (mCameraHelper != null) {
                     mCameraHelper.addSurface(holder.getSurface(), false);
+
                 }
             }
 
@@ -242,6 +243,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mCameraHelper.stopPreview();
                 mCameraHelper.setPreviewSize(size);
                 mCameraHelper.startPreview();
+                System.out.println("previewsizesss " + mCameraHelper.getPreviewSize());
 
                 resizePreviewView(size);
             }

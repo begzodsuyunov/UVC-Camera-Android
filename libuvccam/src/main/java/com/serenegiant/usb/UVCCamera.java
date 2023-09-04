@@ -148,7 +148,6 @@ public class UVCCamera {
         mCurrentSize = size;
 
         mControl = new UVCControl(nativeGetControl(mNativePtr));
-
         return result;
     }
 
