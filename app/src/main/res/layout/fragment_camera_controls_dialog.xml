@@ -36,6 +36,8 @@
 
                 <com.warkiz.widget.IndicatorSeekBar
                     android:id="@+id/isbBrightness"
+                    app:isb_max="100"
+                    app:isb_min="1"
                     style="@style/FragmentCameraControlsSeekBar" />
             </LinearLayout>
 
@@ -50,6 +52,8 @@
 
                 <com.warkiz.widget.IndicatorSeekBar
                     android:id="@+id/isbContrast"
+                    app:isb_max="100"
+                    app:isb_min="1"
                     style="@style/FragmentCameraControlsSeekBar"
                     android:layout_toRightOf="@id/tvContrast" />
 
@@ -73,6 +77,8 @@
                 <com.warkiz.widget.IndicatorSeekBar
                     android:id="@+id/isbHue"
                     style="@style/FragmentCameraControlsSeekBar"
+                    app:isb_min="-2000"
+                    app:isb_max="2000"
                     android:layout_toRightOf="@id/tvHue" />
 
                 <CheckBox
@@ -108,6 +114,8 @@
 
                 <com.warkiz.widget.IndicatorSeekBar
                     android:id="@+id/isbSharpness"
+                    app:isb_max="7"
+                    app:isb_min="1"
                     style="@style/FragmentCameraControlsSeekBar" />
             </LinearLayout>
 
@@ -122,6 +130,8 @@
 
                 <com.warkiz.widget.IndicatorSeekBar
                     android:id="@+id/isbGamma"
+                    app:isb_max="300"
+                    app:isb_min="0"
                     style="@style/FragmentCameraControlsSeekBar" />
             </LinearLayout>
 
@@ -136,6 +146,8 @@
 
                 <com.warkiz.widget.IndicatorSeekBar
                     android:id="@+id/isbWhiteBalance"
+                    app:isb_max="6500"
+                    app:isb_min="2800"
                     style="@style/FragmentCameraControlsSeekBar"
                     android:layout_toRightOf="@id/tvWhiteBalance" />
 
@@ -187,6 +199,8 @@
                 <com.warkiz.widget.IndicatorSeekBar
                     android:id="@+id/isbExposureTime"
                     style="@style/FragmentCameraControlsSeekBar"
+                    app:isb_max="2047"
+                    app:isb_min="0"
                     android:layout_toRightOf="@id/tvExposureTime" />
 
                 <CheckBox
@@ -222,6 +236,8 @@
 
                 <com.warkiz.widget.IndicatorSeekBar
                     android:id="@+id/isbFocus"
+                    app:isb_max="1023"
+                    app:isb_min="0"
                     style="@style/FragmentCameraControlsSeekBar"
                     android:layout_toRightOf="@id/tvFocus" />
 
