@@ -137,9 +137,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         initViews();
         InitializingRunnable();
 
-//        mHandlerThread = new HandlerThread(TAG);
-//        mHandlerThread.start();
-//        mAsyncHandler = new Handler(mHandlerThread.getLooper());
     }
 
     private void initCamera() {
@@ -213,12 +210,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         if (mIsCameraConnected) {
+            menu.findItem(R.id.action_control).setVisible(true);
             menu.findItem(R.id.action_video_format).setVisible(true);
             menu.findItem(R.id.action_rotate_90_CW).setVisible(true);
             menu.findItem(R.id.action_rotate_90_CCW).setVisible(true);
             menu.findItem(R.id.action_flip_horizontally).setVisible(true);
             menu.findItem(R.id.action_flip_vertically).setVisible(true);
         } else {
+            menu.findItem(R.id.action_control).setVisible(false);
             menu.findItem(R.id.action_video_format).setVisible(false);
             menu.findItem(R.id.action_rotate_90_CW).setVisible(false);
             menu.findItem(R.id.action_rotate_90_CCW).setVisible(false);
@@ -270,15 +269,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-
-    //    private void setCustomVideoCaptureConfig() {
-//        mCameraHelper.setVideoCaptureConfig(
-//                mCameraHelper.getVideoCaptureConfig()
-//                        .setAudioCaptureEnable(false)
-//                        .setBitRate((int) (1024 * 1024 * 25 * 0.25))
-//                        .setVideoFrameRate(25)
-//                        .setIFrameInterval(1));
-//    }
+    private void showCameraControlsDialog() {
+        if (mControlsDialog == null) {
+            mControlsDialog = new CameraControlsDialogFragment(mCameraHelper);
+        }
+        // When DialogFragment is not showing
+        if (!mControlsDialog.isAdded()) {
+            mControlsDialog.show(getSupportFragmentManager(), "camera_controls");
+        }
+    }
     private void closeAllDialogFragment() {
         if (mControlsDialog != null && mControlsDialog.isAdded()) {
             mControlsDialog.dismiss();
@@ -286,9 +285,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (mDeviceListDialog != null && mDeviceListDialog.isAdded()) {
             mDeviceListDialog.dismiss();
         }
-//        if (mFormatDialog != null && mFormatDialog.isAdded()) {
-//            mFormatDialog.dismiss();
-//        }
     }
 
     private void clearCameraHelper() {
@@ -582,6 +578,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             flipHorizontally();
         } else if (id == R.id.action_flip_vertically) {
             flipVertically();
+        } else if (id == R.id.action_control){
+            showCameraControlsDialog();
         }
 
         return true;

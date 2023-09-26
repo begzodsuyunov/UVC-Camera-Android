@@ -62,5 +62,33 @@
         <item name="android:background">#00000000</item>
         <item name="android:textColor">@color/DEEPPINK</item>
     </style>
+    <style name="MainFloatingActionButton">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="borderWidth">0dp</item>
+        <item name="elevation">5dp</item>
+        <item name="fabSize">mini</item>
+        <item name="pressedTranslationZ">10dp</item>
+        <item name="tint">@color/white</item>
+        <item name="android:backgroundTint">#773700B3</item>
+    </style>
+
+
+
+
+
+    <style name="FragmentCameraControlsSeekBar" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">5dp</item>
+        <item name="isb_show_indicator">none</item>
+        <item name="isb_show_thumb_text">true</item>
+        <item name="isb_show_tick_texts">true</item>
+        <item name="isb_ticks_count">2</item>
+        <item name="isb_thumb_color">@color/DEEPPINK</item>
+        <item name="isb_thumb_text_color">@color/DEEPPINK</item>
+        <item name="isb_track_progress_color">@color/DEEPPINK</item>
+    </style>
+
 
 </resources>

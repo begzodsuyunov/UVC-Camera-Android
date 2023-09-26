@@ -24,4 +24,28 @@
     <string name="action_rotate_90_CCW">Rotate 90 CCW</string>
     <string name="action_flip_horizontally">Flip Horizontally</string>
     <string name="action_flip_vertically">Flip Vertically\n</string>
+
+
+    <string name="camera_controls_text_brightness">Brightness</string>
+    <string name="camera_controls_text_contrast">Contrast</string>
+    <string name="camera_controls_text_hue">Hue</string>
+    <string name="camera_controls_text_auto">Auto</string>
+    <string name="camera_controls_text_saturation">Saturation</string>
+    <string name="camera_controls_text_sharpness">Sharpness</string>
+    <string name="camera_controls_text_gamma">Gamma</string>
+    <string name="camera_controls_text_white_balance">White Balance</string>
+    <string name="camera_controls_text_backlight_comp">Backlight Comp</string>
+    <string name="camera_controls_text_gain">Gain</string>
+    <string name="camera_controls_text_exposure_time">ExposureTime</string>
+    <string name="camera_controls_text_iris">Iris</string>
+    <string name="camera_controls_text_focus">Focus</string>
+    <string name="camera_controls_text_zoom">Zoom</string>
+    <string name="camera_controls_text_pan">Pan</string>
+    <string name="camera_controls_text_tilt">Tilt</string>
+    <string name="camera_controls_text_roll">Roll</string>
+    <string name="camera_controls_text_disable">Disable</string>
+    <string name="camera_controls_text_50hz">50Hz</string>
+    <string name="camera_controls_text_60hz">60Hz</string>
+    <string name="camera_controls_button_close">Close</string>
+    <string name="camera_controls_button_reset">Reset</string>
 </resources>
